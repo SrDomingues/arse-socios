@@ -1,4 +1,4 @@
-# Reconstruye index.html a partir de la página del artefacto y su snapshot.json.
+﻿# Reconstruye index.html a partir de la página del artefacto y su snapshot.json.
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1 <page.html> <snapshot.json>
 # Equivale a build.py para equipos sin Python. La lista de cotizadas sale de data\universe.json.
 param([Parameter(Mandatory)][string]$Page, [Parameter(Mandatory)][string]$Snapshot)

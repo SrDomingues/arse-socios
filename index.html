@@ -871,7 +871,7 @@ Promise.resolve().then(() => JSON.parse(document.getElementById("data-snapshot")
   const [db, user] = await Promise.all([use("db"), use("user")]);
   if(user){ try{ S.me = await user.id() }catch(e){} }
   if(!db){
-    $("#globalNotice").innerHTML = `<b>Precios: último cierre disponible, no cotización en directo.</b> Datos actualizados<span id="snapDate">${snapAsOf ? esc(snapWhen(snapAsOf)) : ""}</span>. Cada precio lleva su fecha y su fuente. Todas las cifras salen de fuentes públicas enlazadas.`;
+    $("#globalNotice").innerHTML = `<b>Precios: último cierre disponible, no cotización en directo.</b> Datos actualizados<span id="snapDate">${snapAsOf ? esc(snapWhen(snapAsOf)) : ""}</span>; se refrescan tres veces cada día laborable. Cada precio lleva su fecha y su fuente. Todas las cifras salen de fuentes públicas enlazadas.`;
     $("#tab-vigilancia").hidden = true;
     if(!$("#view-vigilancia").hidden) show("oportunidades");
     return;
