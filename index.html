@@ -266,8 +266,8 @@ ol.srcs{margin:0;padding-left:20px;font-size:13.5px} ol.srcs li{margin-bottom:4p
     <div class="sechead"><h2>Valoración</h2></div>
     <div class="grid2">
       <div class="panel">
-        <h3>Rentabilidad esperada y márgenes de seguridad</h3>
-        <p class="muted" style="margin:0 0 6px;font-size:13.5px">Tasa anual que obtendría comprando hoy si se cumplen los supuestos, comparada con sus tres umbrales, y precio máximo de compra para cada uno.</p>
+        <h3>Valor intrínseco, rentabilidad esperada y márgenes de seguridad</h3>
+        <p class="muted" style="margin:0 0 6px;font-size:13.5px">Lo que vale cada acción según los flujos de caja descontados, la tasa anual que obtendría comprando hoy si se cumplen los supuestos, comparada con sus tres umbrales, y precio máximo de compra para cada uno.</p>
         <div class="hurdles" id="hurdles"></div>
         <div style="margin-top:16px" id="reverseBox"></div>
       </div>
@@ -550,7 +550,11 @@ function renderNumbers(){
   }
   const w = wacc(c), er = expectedReturn(c), H = hurdleValues(c), low = !isFinite(er);
   const rows = [["Bono a 10 años", c.rf, H.rf.v],["WACC", w, H.wacc.v],["15 % (Buffett)", 0.15, H.h15.v]];
-  $("#hurdles").innerHTML = `<div style="grid-column:1/-1"><div class="eyebrow">Rentabilidad esperada al precio actual (anual, 10 años)</div><div class="irr">${low?"n/d":pct(er)}</div>${!low && er<0?`<p class="muted" style="font-size:12.5px;margin:2px 0 0">Negativa: con el flujo de caja actual y el crecimiento supuesto, quien compre hoy perdería dinero aunque en 10 años la empresa valga lo que pide el mercado.</p>`:""}
+  const iv = H.wacc.v, ivGap = isFinite(iv) && iv > 0 ? 1 - c.price/iv : NaN;
+  const ivHtml = `<div style="padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--line)"><div class="eyebrow">Valor intrínseco por acción</div>
+   <div class="row" style="align-items:baseline;gap:6px 14px"><span class="irr">${isFinite(iv) ? fmt(iv, iv>=1000?0:2)+" "+esc(c.currency||"") : "n/d"}</span>${isFinite(ivGap) ? (ivGap >= 0 ? `<span class="pill good">Margen de seguridad ${pct(ivGap,0)}</span>` : `<span class="pill bad">Cotiza un ${pct(c.price/iv-1,0)} por encima</span>`) : ""}</div>
+   <p class="muted" style="font-size:12.5px;margin:2px 0 0">${isFinite(iv) ? `Flujos de caja de 10 años y valor terminal descontados al WACC (${pct(w)}), menos la deuda neta, por acción. Precio actual: ${fmt(c.price)} ${esc(c.currency||"")}.` : "El WACC no supera al crecimiento terminal: el modelo no converge."}</p></div>`;
+  $("#hurdles").innerHTML = `<div style="grid-column:1/-1">${ivHtml}<div class="eyebrow">Rentabilidad esperada al precio actual (anual, 10 años)</div><div class="irr">${low?"n/d":pct(er)}</div>${!low && er<0?`<p class="muted" style="font-size:12.5px;margin:2px 0 0">Negativa: con el flujo de caja actual y el crecimiento supuesto, quien compre hoy perdería dinero aunque en 10 años la empresa valga lo que pide el mercado.</p>`:""}
    <div class="cmp" style="grid-template-columns:minmax(0,1.2fr) auto auto auto"><span class="h">Umbral</span><span class="h n">Diferencia</span><span class="h n">Precio máximo</span><span class="h n">Margen de seguridad</span>
    ${rows.map(([n,r,v]) => { const d = er - r, ok = d >= 0, dtxt = isFinite(d) ? `${d>=0?"+":""}${(d*100).toFixed(1).replace(".",",")} pp` : "n/d"; return `<span>${n} <span class="muted mono">${pct(r)}</span></span><span class="n"><span class="pill ${ok?"good":"bad"}">${dtxt}</span></span><span class="n">${isFinite(v)?fmt(v, v>=1000?0:2)+" "+esc(c.currency||""):`<span class="muted" title="El WACC no supera al crecimiento terminal: el modelo no converge">n/d</span>`}</span><span class="n">${isFinite(v)?(v>=c.price ? `<span class="pill good">${pct(1-c.price/v,0)}</span>` : `<span class="pill bad" title="El precio actual está por encima de este precio máximo">${pct(c.price/v-1,0)} caro</span>`):"—"}</span>`; }).join("")}
    </div><p class="muted" style="font-size:12.5px;margin:10px 0 0">Coste del capital propio ${pct(costEquity(c))} (beta ajustada ${fmt(adjBeta(c),2)}, suelo ${pct(c.keFloor??0.06,0)}). Cómo se calcula: se proyectan los flujos de caja de 10 años y, en el año 10, la empresa se vende a su valor de mercado (valor terminal descontado al WACC, ${pct(w)}). La rentabilidad esperada es la rentabilidad anual que da comprar hoy al precio actual. El «precio máximo» de cada umbral es lo más que se puede pagar hoy para obtener esa rentabilidad. El margen de seguridad es la distancia entre ese precio y el actual. Así el bono solo cambia la rentabilidad exigida, sin inflar el valor terminal.</p></div>`;
