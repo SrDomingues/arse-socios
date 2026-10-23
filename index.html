@@ -43,7 +43,7 @@ h3{font-family:var(--f-display);font-weight:700;font-size:18px;margin:0 0 10px}
 .lede{color:var(--muted);margin:0 0 20px;max-width:68ch}
 .eyebrow{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
-label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+label.f,div.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
 select{max-width:100%;width:100%}
 input,select,textarea{font:15px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
 input.num{font-family:var(--f-mono);width:100%}
@@ -144,6 +144,9 @@ dl.ro dd.k{font-weight:600;color:var(--ink)}
 .cmp{gap:6px 10px;overflow-x:auto}
 .cmp>*{min-width:0;overflow-wrap:break-word;hyphens:auto}
 .cmp .h{line-height:1.25}
+/* Nombre del umbral y su tasa en una sola línea («Bono a 10 años 6,5 %») */
+.cmp .lbl{white-space:nowrap}
+.cmp .sub{display:block;font-family:var(--f-body);font-size:12px;color:var(--muted);line-height:1.3}
 .cmp .pill{white-space:normal;line-height:1.3;padding:1px 6px;font-size:11.5px;overflow-wrap:anywhere}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0;border-top:1px solid var(--line);border-left:1px solid var(--line)}
 .metric{background:var(--surface);padding:10px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -158,6 +161,14 @@ dl.ro dd.k{font-weight:600;color:var(--ink)}
 .pheat .hd{color:var(--muted);font-size:11.5px;background:none}
 .pheat button{all:unset;cursor:pointer}
 svg text{font-family:var(--f-body)}
+/* Buscador de empresas: se escribe el nombre o el ticker y se elige de la lista */
+.csearch{position:relative}
+.csearch input{width:100%}
+.csearch ul{position:absolute;z-index:6;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 20px rgb(0 0 0 / .14);max-height:320px;overflow-y:auto}
+.csearch li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 10px;border-radius:4px;cursor:pointer;font-size:14px;color:var(--ink)}
+.csearch li .muted{font-size:12px;white-space:nowrap}
+.csearch li[aria-selected="true"]{background:var(--accent-soft)}
+.csearch li.none{cursor:default;color:var(--muted)}
 ol.srcs{margin:0;padding-left:20px;font-size:13.5px} ol.srcs li{margin-bottom:4px;overflow-wrap:anywhere}
 /* Textos largos (enlaces de fuentes, datos de fondos, etiquetas) se parten antes que salirse de su columna */
 .panel{overflow-wrap:break-word}
@@ -166,6 +177,8 @@ dl.ro{grid-template-columns:minmax(96px,42%) minmax(0,1fr)}
 dl.ro dd{overflow-wrap:anywhere;min-width:0}
 dl.ro dt{min-width:0;padding-right:10px}
 .hurdles .pill,.verdict .pill,.badge .pill{white-space:normal}
+/* En el móvil, el umbral ocupa su propia línea y las cifras van debajo, sin cortar la tabla */
+@media (max-width:600px){.cmp.thr{grid-template-columns:repeat(var(--cols),minmax(0,1fr))!important}.cmp.thr .h0,.cmp.thr .lbl{grid-column:1/-1}.cmp.thr .lbl{padding-top:6px;border-top:1px solid var(--line);font-weight:600}}
 @media (max-width:600px){.brand h1{font-size:20px} h2{font-size:23px} nav.tabs{margin-left:0;width:100%}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -191,6 +204,7 @@ dl.ro dt{min-width:0;padding-right:10px}
   <h2>Calidad global frente a precio</h2>
   <p class="lede" id="opLede">Cada empresa analizada, ordenada por lo que el precio actual le ofrece. La rentabilidad esperada es la tasa anual que iguala el valor del negocio al precio de hoy; se compara con sus tres umbrales: bono a 10 años, WACC y 15 %.</p>
   <div class="row" style="margin-bottom:14px">
+    <label class="f" style="flex:1 1 220px">Buscar empresa <input id="opQ" type="search" placeholder="Nombre o ticker" autocomplete="off"></label>
     <label class="f">Región <select id="opRegion"><option value="">Todas</option><option>Europa</option><option>Norteamérica</option><option>Asia</option></select></label>
     <label class="f">Veredicto <select id="opVerdict"><option value="">Todos</option><option>Oportunidad</option><option>Vigilar</option><option>Evitar</option></select></label>
     <label class="f">Sector <select id="opGroup"><option value="">Todos</option></select></label>
@@ -238,6 +252,7 @@ dl.ro dt{min-width:0;padding-right:10px}
   <h2>Comparables del sector</h2>
   <p class="lede">Elija una empresa: verá a sus competidores entre las empresas analizadas, con su veredicto, calidad, rentabilidad esperada y múltiplos lado a lado. Los datos salen de los análisis con fuentes, no de la memoria.</p>
   <div class="row" style="margin-bottom:14px">
+    <div class="f csearch" style="flex:1 1 240px"><label for="peerQ">Buscar empresa</label><input id="peerQ" type="search" placeholder="Nombre o ticker" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="peerQList"><ul id="peerQList" role="listbox" hidden></ul></div>
     <label class="f" style="flex:1 1 280px">Empresa <select id="peerPick"></select></label>
   </div>
   <div class="tablewrap" id="peerTable"></div>
@@ -247,6 +262,7 @@ dl.ro dt{min-width:0;padding-right:10px}
 <!-- ANALISIS -->
 <section class="view" id="view-analisis" hidden>
   <form id="pickForm" class="row" style="margin-bottom:18px">
+    <div class="f csearch" style="flex:1 1 240px"><label for="coQ">Buscar empresa</label><input id="coQ" type="search" placeholder="Nombre o ticker" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="coQList"><ul id="coQList" role="listbox" hidden></ul></div>
     <label class="f" style="flex:1 1 220px">Empresa
       <select id="coPick"></select></label>
 
@@ -329,7 +345,7 @@ dl.ro dt{min-width:0;padding-right:10px}
   <div class="ptabs" id="ptabs"></div>
   <div class="row" style="margin-bottom:14px">
     <label class="f">Umbral para «en margen»
-      <select id="hurdleSel"><option value="mq" selected>Precio de compra (margen según calidad)</option><option value="rf">Bono a 10 años</option><option value="wacc">WACC (valor intrínseco)</option><option value="h15">15 % (Buffett)</option></select></label>
+      <select id="hurdleSel"><option value="mq" selected>Precio de compra (margen según calidad)</option><option value="rf">Bono a 10 años</option><option value="wacc">WACC (valor intrínseco)</option><option value="h15">15&nbsp;% (Buffett)</option></select></label>
     <form id="addToPf" class="row">
       <label class="f">Añadir ticker a esta cartera <input id="pfTicker" placeholder="p. ej. CSU.TO" autocomplete="off"></label>
       <button class="btn ghost" type="submit">Añadir</button>
@@ -351,7 +367,7 @@ dl.ro dt{min-width:0;padding-right:10px}
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = (v, d=2) => (v==null || !isFinite(v)) ? "—" : v.toLocaleString("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d});
-const pct = (v, d=1) => (v==null || !isFinite(v)) ? "—" : (v*100).toLocaleString("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}) + " %";
+const pct = (v, d=1) => (v==null || !isFinite(v)) ? "—" : (v*100).toLocaleString("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}) + "\u00a0%";
 const today = () => new Date().toISOString().slice(0,10);
 const keyOf = t => String(t||"").trim().toUpperCase().replace(/[^A-Z0-9._-]/g,"").slice(0,24);
 
@@ -560,7 +576,7 @@ function renderNumbers(){
     $("#reverseBox").innerHTML=""; $("#heatWrap").innerHTML=`<p class="muted">${neg ? "Sin mapa de calor: el flujo de caja libre es negativo." : "El mapa aparece cuando los supuestos están completos."}</p>`; $("#heatLegend").innerHTML=""; return;
   }
   const w = wacc(c), er = expectedReturn(c), H = hurdleValues(c), low = !isFinite(er);
-  const rows = [["Bono a 10 años", c.rf, H.rf.v],["WACC", w, H.wacc.v],["15 % (Buffett)", 0.15, H.h15.v]];
+  const rows = [["Bono a 10 años", c.rf, H.rf.v],["WACC", w, H.wacc.v],["15\u00a0% (Buffett)", 0.15, H.h15.v]];
   const iv = H.wacc.v, ivGap = isFinite(iv) && iv > 0 ? 1 - c.price/iv : NaN;
   const cur = esc(c.currency||""), money = v => isFinite(v) ? fmt(v, v>=1000?0:2)+" "+cur : "n/d";
   const ivHtml = `<div><div class="eyebrow">Valor intrínseco por acción</div><div class="irr">${money(iv)}</div>
@@ -576,15 +592,15 @@ function renderNumbers(){
    </div><p class="muted" style="font-size:12.5px;margin:6px 0 0">Regla de ARSE Socios: solo es «Oportunidad» si el precio está por debajo del valor intrínseco menos un 25 % (nota Munger 4 o más), un 33 % (de 3 a 4) o un 50 % (menos de 3). Graham pedía en torno a un tercio; Munger aceptaba menos margen cuanto mejor y más previsible es el negocio.</p>` : "";
   $("#hurdles").innerHTML = `<div style="grid-column:1/-1"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 24px;align-items:start">${ivHtml}${erHtml}</div>${mosHtml}
    <div class="eyebrow" style="margin-top:16px">Márgenes según la rentabilidad exigida: bono, WACC y Buffett</div>
-   <div class="cmp" style="grid-template-columns:minmax(72px,1.2fr) repeat(3,minmax(52px,1fr));align-items:start"><span class="h">Rentabilidad exigida</span><span class="h n">Precio máximo</span><span class="h n">Margen sobre el valor intrínseco</span><span class="h n">Frente al precio actual</span>
-   ${rows.map(([n,r,v],i) => { const mg = isFinite(v) && isFinite(iv) && iv > 0 ? 1 - v/iv : NaN; return `<span>${n} <span class="muted mono">${pct(r)}</span></span><span class="n">${isFinite(v)?money(v):`<span class="muted" title="El WACC no supera al crecimiento terminal: el modelo no converge">n/d</span>`}</span><span class="n mono">${!isFinite(mg) ? "—" : Math.abs(mg) < 0.005 ? "0 % (es el valor intrínseco)" : mg > 0 ? `${pct(mg,0)} por debajo` : `${pct(-mg,0)} por encima`}</span><span class="n">${isFinite(v)?(v>=c.price ? `<span class="pill good">${pct(1-c.price/v,0)} por debajo</span>` : `<span class="pill bad" title="El precio actual está por encima de este precio máximo">${pct(c.price/v-1,0)} caro</span>`):"—"}</span>`; }).join("")}
+   <div class="cmp thr" style="--cols:3;grid-template-columns:max-content repeat(3,minmax(52px,1fr));align-items:start"><span class="h h0">Rentabilidad exigida</span><span class="h n">Precio máximo</span><span class="h n">Margen sobre el valor intrínseco</span><span class="h n">Frente al precio actual</span>
+   ${rows.map(([n,r,v],i) => { const mg = isFinite(v) && isFinite(iv) && iv > 0 ? 1 - v/iv : NaN; return `<span class="lbl">${n} <span class="muted mono">${pct(r)}</span></span><span class="n">${isFinite(v)?money(v):`<span class="muted" title="El WACC no supera al crecimiento terminal: el modelo no converge">n/d</span>`}</span><span class="n mono">${!isFinite(mg) ? "—" : Math.abs(mg) < 0.005 ? `0\u00a0%<span class="sub">es el valor intrínseco</span>` : mg > 0 ? `${pct(mg,0)}<span class="sub">por debajo</span>` : `${pct(-mg,0)}<span class="sub">por encima</span>`}</span><span class="n">${isFinite(v)?(v>=c.price ? `<span class="pill good">${pct(1-c.price/v,0)} por debajo</span>` : `<span class="pill bad" title="El precio actual está por encima de este precio máximo">${pct(c.price/v-1,0)} caro</span>`):"—"}</span>`; }).join("")}
    </div><p class="muted" style="font-size:12.5px;margin:10px 0 0">Coste del capital propio ${pct(costEquity(c))} (beta ajustada ${fmt(adjBeta(c),2)}, suelo ${pct(c.keFloor??0.06,0)}). Cómo se calcula: se proyectan los flujos de caja de 10 años y, en el año 10, la empresa se vende a su valor de mercado (valor terminal descontado al WACC, ${pct(w)}). El valor intrínseco es lo que valen hoy esos flujos descontados al WACC, el coste del capital de la empresa. El margen de seguridad es el descuento que se exige sobre ese valor antes de comprar, para cubrir errores en los supuestos. La rentabilidad esperada es la rentabilidad anual que da comprar hoy al precio actual. La última tabla es otra forma de verlo: el precio máximo que se puede pagar para obtener cada rentabilidad; al WACC coincide con el valor intrínseco, y exigir un 15 % equivale a pedir un margen de seguridad adicional.</p></div>`;
-  const gs = [["Bono a 10 años", c.rf],["WACC", w],["15 % (Buffett)", 0.15]].map(([n,r]) => [n, r, impliedG1(c, r)]);
+  const gs = [["Bono a 10 años", c.rf],["WACC", w],["15\u00a0% (Buffett)", 0.15]].map(([n,r]) => [n, r, impliedG1(c, r)]);
   const lead = !low && er < c.rf;
   $("#reverseBox").innerHTML = `<div class="eyebrow">DCF inverso${lead ? ` <span class="pill warn">aquí es la referencia</span>` : ""}</div>
    <p style="margin:4px 0 8px">${lead ? `Con el flujo de caja actual el DCF directo no justifica el precio, así que la pregunta útil es la inversa: ` : ""}¿cuánto tendría que crecer el flujo de caja cada año (años 1 a 5) para que comprar hoy a ${fmt(c.price)} ${esc(c.currency||"")} rinda cada umbral? Su supuesto es un <b class="mono">${pct(c.g1)}</b>.</p>
-   <div class="cmp" style="grid-template-columns:minmax(78px,1.2fr) repeat(2,minmax(72px,1fr));align-items:start"><span class="h">Para rendir</span><span class="h n">Crecimiento necesario</span><span class="h n">Frente al supuesto</span>
-   ${gs.map(([n,r,g]) => `<span>${n} <span class="muted mono">${pct(r)}</span></span><span class="n mono">${isFinite(g)?pct(g):"más del 100 %"}</span><span class="n">${isFinite(g) ? (g <= c.g1 ? `<span class="pill good">alcanzable</span>` : `<span class="pill bad">${pp(g-c.g1)}</span>`) : `<span class="pill bad">inalcanzable</span>`}</span>`).join("")}
+   <div class="cmp thr" style="--cols:2;grid-template-columns:max-content repeat(2,minmax(72px,1fr));align-items:start"><span class="h h0">Para rendir</span><span class="h n">Crecimiento necesario</span><span class="h n">Frente al supuesto</span>
+   ${gs.map(([n,r,g]) => `<span class="lbl">${n} <span class="muted mono">${pct(r)}</span></span><span class="n mono">${isFinite(g)?pct(g):"más del 100\u00a0%"}</span><span class="n">${isFinite(g) ? (g <= c.g1 ? `<span class="pill good">alcanzable</span>` : `<span class="pill bad">${pp(g-c.g1)}</span>`) : `<span class="pill bad">inalcanzable</span>`}</span>`).join("")}
    </div>`;
   renderHeat(c, w);
 }
@@ -726,7 +742,7 @@ function renderPortfolios(){
   $("#ptabs").innerHTML = vis.map(([id,p]) => `<button aria-pressed="${id===S.pf}" data-pf="${esc(id)}">${esc(p.name)}${p.owner==="shared"?" · común":""}</button>`).join("") || `<span class="muted">Sin carteras todavía.</span>`;
   $("#ptabs").querySelectorAll("[data-pf]").forEach(b => b.addEventListener("click", () => { S.pf = b.dataset.pf; renderPortfolios(); }));
   const p = S.portfolios[S.pf], hk = $("#hurdleSel").value;
-  const names = {mq:"precio de compra", rf:"Bono 10 años", wacc:"WACC", h15:"15 %"};
+  const names = {mq:"precio de compra", rf:"Bono 10 años", wacc:"WACC", h15:"15\u00a0%"};
   if(!p || !(p.tickers||[]).length){ $("#pfTable").innerHTML = `<div class="empty">Esta cartera está vacía. Añada un ticker o envíe empresas desde el radar.</div>`; return; }
   const rows = p.tickers.map(t => {
     const c0 = S.companies[t] || {ticker:t, name:t}, c = full(c0), a = S.analyses[t];
@@ -804,15 +820,15 @@ function renderSources(raw){
 /* ---------- Mapa de calor de cartera y dispersión ---------- */
 function heatBg(up){ if(!isFinite(up)) return "var(--surface)"; const k = Math.min(Math.abs(up),0.6)/0.6*55+8; return `color-mix(in srgb, ${up>=0?"var(--good)":"var(--bad)"} ${k.toFixed(0)}%, var(--surface))`; }
 function oppRows(){
-  const reg = $("#opRegion").value, vf = $("#opVerdict").value, gf = $("#opGroup").value;
-  return Object.values(S.companies).filter(c0 => isComplete(c0) && c0.kind!=="fondo" && (!reg || c0.region===reg) && (!gf || c0.group===gf) && (!vf || verdictOf(c0.ticker)?.decision===vf)).map(c0 => {
+  const reg = $("#opRegion").value, vf = $("#opVerdict").value, gf = $("#opGroup").value, q = norm($("#opQ").value.trim());
+  return Object.values(S.companies).filter(c0 => isComplete(c0) && c0.kind!=="fondo" && matchCo(c0, q) && (!reg || c0.region===reg) && (!gf || c0.group===gf) && (!vf || verdictOf(c0.ticker)?.decision===vf)).map(c0 => {
     const c = full(c0), a = S.analyses[c0.ticker];
     if(!ready(c)) return {t:c0.ticker, c0, c, a, er:NaN, w:NaN, mu:avgScore(a), aus:ausScore(a)};
     return {t:c0.ticker, c0, c, a, er:expectedReturn(c), w:wacc(c), mu:avgScore(a), aus:ausScore(a)};
   });
 }
 function spreadBg(d){ if(!isFinite(d)) return "var(--surface)"; const k = Math.min(Math.abs(d),0.06)/0.06*55+8; return `color-mix(in srgb, ${d>=0?"var(--good)":"var(--bad)"} ${k.toFixed(0)}%, var(--surface))`; }
-const pp = d => isFinite(d) ? `${d>=0?"+":""}${(d*100).toFixed(1).replace(".",",")} pp` : "—";
+const pp = d => isFinite(d) ? `${d>=0?"+":""}${(d*100).toFixed(1).replace(".",",")}\u00a0pp` : "—";
 function renderOpportunities(){
   const sortBy = $("#opSort").value;
   const rows = oppRows();
@@ -821,9 +837,9 @@ function renderOpportunities(){
   const gs = [...new Set(Object.values(S.companies).map(c=>c.group).filter(Boolean))].sort(), gsel = $("#opGroup");
   if(gsel.options.length !== gs.length+1){ const cur = gsel.value; gsel.innerHTML = `<option value="">Todos</option>` + gs.map(g=>`<option>${esc(g)}</option>`).join(""); gsel.value = cur; }
   rows.sort((x,y) => (isFinite(key(y))?key(y):-99) - (isFinite(key(x))?key(x):-99));
-  $("#opLede").textContent = `${rows.length} empresas analizadas de Europa, Norteamérica y Asia (${rows.filter(r=>verdictOf(r.t)?.decision==="Oportunidad").length} oportunidades). La rentabilidad esperada es la tasa anual que iguala el valor del negocio al precio de hoy; se compara con sus tres umbrales: bono a 10 años, WACC y 15 %. Añada más desde el Universo.`;
+  $("#opLede").textContent = `${rows.length} ${rows.length===1?"empresa analizada":"empresas analizadas"}${$("#opQ").value.trim()?` que coinciden con «${$("#opQ").value.trim()}»`:" de Europa, Norteamérica y Asia"} (${(n => n===1?"1 oportunidad":n+" oportunidades")(rows.filter(r=>verdictOf(r.t)?.decision==="Oportunidad").length)}). La rentabilidad esperada es la tasa anual que iguala el valor del negocio al precio de hoy; se compara con sus tres umbrales: bono a 10 años, WACC y 15 %. Añada más desde el Universo.`;
   // tabla
-  $("#opTable").innerHTML = rows.length ? `<table><thead><tr><th>Empresa</th><th>Veredicto</th><th>Región</th><th class="n">Munger</th><th>Sesgos austriacos</th><th style="min-width:280px" title="En rojo: distorsiones austriacas desfavorables y criterios Munger con nota 2 o menos. Debajo, el principal motivo por el que podría tener problemas.">Defectos a vigilar</th><th class="n">Rent. esperada</th><th class="n">− Bono</th><th class="n">− WACC</th><th class="n">− 15 %</th><th class="n">Precio</th></tr></thead><tbody>
+  $("#opTable").innerHTML = !rows.length && $("#opQ").value.trim() ? `<div class="empty">Ninguna empresa analizada coincide con «${esc($("#opQ").value.trim())}».</div>` : rows.length ? `<table><thead><tr><th>Empresa</th><th>Veredicto</th><th>Región</th><th class="n">Munger</th><th>Sesgos austriacos</th><th style="min-width:280px" title="En rojo: distorsiones austriacas desfavorables y criterios Munger con nota 2 o menos. Debajo, el principal motivo por el que podría tener problemas.">Defectos a vigilar</th><th class="n">Rent. esperada</th><th class="n">− Bono</th><th class="n">− WACC</th><th class="n">− 15&nbsp;%</th><th class="n">Precio</th></tr></thead><tbody>
   ${rows.map(r => `<tr><td><a href="#analisis" data-open="${esc(r.t)}"><b>${esc(r.c0.name||r.t)}</b></a><div class="muted mono" style="font-size:12px">${esc(r.t)} · ${esc(r.c0.sector||"")}</div></td>
    <td>${vpill(verdictOf(r.t)?.decision)}</td><td>${esc(r.c0.region||"")}<div class="muted" style="font-size:12px">${esc(r.c0.country||"")}</div></td>
    <td class="n">${isFinite(r.mu)?fmt(r.mu,1):"—"}</td><td>${lights(r.aus)}</td><td>${defects(r.t)}</td>
@@ -833,7 +849,7 @@ function renderOpportunities(){
   $("#opTable").querySelectorAll("[data-open]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); openCompany(a.dataset.open); }));
   // mapa de calor
   const usable = rows.filter(r => isFinite(r.er));
-  let h = `<div class="pheat" style="grid-template-columns:minmax(120px,1.5fr) 0.8fr repeat(3,1fr)"><div class="hd"></div><div class="hd">Rent.</div><div class="hd">− Bono</div><div class="hd">− WACC</div><div class="hd">− 15 %</div>`;
+  let h = `<div class="pheat" style="grid-template-columns:minmax(120px,1.5fr) 0.8fr repeat(3,1fr)"><div class="hd"></div><div class="hd">Rent.</div><div class="hd">− Bono</div><div class="hd">− WACC</div><div class="hd">− 15&nbsp;%</div>`;
   usable.forEach(r => {
     h += `<div class="nm"><button data-open="${esc(r.t)}" title="${esc(r.c0.name||r.t)}">${esc(r.c0.name||r.t)}</button></div><div>${pct(r.er)}</div>`;
     [r.c.rf, r.w, 0.15].forEach(u => { const d = r.er-u; h += `<div style="background:${spreadBg(d)}">${pp(d)}</div>`; });
@@ -845,7 +861,7 @@ function renderOpportunities(){
   const X = v => L + (Math.max(X0,Math.min(X1,v))-X0)/(X1-X0)*(W-L-R), Y = v => T + (5-v)/2.5*(H-T-B);
   let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Calidad frente a precio" style="width:100%;height:auto">
    <rect x="${X(0)}" y="${T}" width="${X(X1)-X(0)}" height="${Y(3.8)-T}" fill="var(--good)" fill-opacity="0.08"/>`;
-  [-0.08,-0.04,0,0.04,0.08].forEach(v => svg += `<line x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${H-B}" stroke="var(--line)"/><text x="${X(v)}" y="${H-B+16}" text-anchor="middle" font-size="11" fill="var(--muted)">${v>0?"+":""}${Math.round(v*100)} pp</text>`);
+  [-0.08,-0.04,0,0.04,0.08].forEach(v => svg += `<line x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${H-B}" stroke="var(--line)"/><text x="${X(v)}" y="${H-B+16}" text-anchor="middle" font-size="11" fill="var(--muted)">${v>0?"+":""}${Math.round(v*100)}&nbsp;pp</text>`);
   [2.5,3,3.5,4,4.5,5].forEach(v => svg += `<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${String(v).replace(".",",")}</text>`);
   svg += `<line x1="${X(0)}" x2="${X(0)}" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-dasharray="4 4"/>
    <text x="${W-R}" y="${H-6}" text-anchor="end" font-size="11" fill="var(--muted)">Más rentabilidad que el WACC →</text>
@@ -860,6 +876,7 @@ function renderOpportunities(){
   $("#pfScatter").innerHTML = n ? svg + `</svg>` : `<p class="muted">Aparece cuando las empresas tienen análisis cualitativo.</p>`;
   $("#pfScatter").querySelectorAll("[data-open]").forEach(g => g.addEventListener("click", () => openCompany(g.dataset.open)));
 }
+let opT; $("#opQ").addEventListener("input", () => { clearTimeout(opT); opT = setTimeout(renderOpportunities, 150); });
 $("#opRegion").addEventListener("change", renderOpportunities);
 $("#opVerdict").addEventListener("change", renderOpportunities);
 $("#opGroup").addEventListener("change", renderOpportunities);
@@ -982,6 +999,40 @@ $("#uniPrev").addEventListener("click", () => { U.page--; renderUni(); });
 $("#uniNext").addEventListener("click", () => { U.page++; renderUni(); });
 loadUniverse();
 
+/* ---------- Buscador de empresas ---------- */
+// Coincide por nombre (sin acentos) o por ticker; primero el ticker exacto, después los nombres que empiezan por lo escrito.
+const matchCo = (c, q) => !q || norm(c.name).includes(q) || norm(c.ticker).includes(q);
+const rankCo = (c, q) => norm(c.ticker)===q ? 0 : norm(c.name).startsWith(q) || norm(c.ticker).startsWith(q) ? 1 : norm(c.name).split(/\s+/).some(w => w.startsWith(q)) ? 2 : 3;
+function coSearch(input, list, pick){
+  const box = $("#"+input.getAttribute("aria-controls")); let hits = [], at = -1;
+  const close = () => { box.hidden = true; hits = []; at = -1; input.setAttribute("aria-expanded","false"); input.removeAttribute("aria-activedescendant"); };
+  const paint = () => {
+    box.innerHTML = hits.length ? hits.map((c,i) => `<li role="option" id="${input.id}-o${i}" data-t="${esc(c.ticker)}" aria-selected="${i===at}"><span>${esc(c.name||c.ticker)}</span><span class="muted mono">${esc(c.ticker)}${c.group?" · "+esc(c.group):""}</span></li>`).join("")
+      : `<li class="none" aria-disabled="true">Ninguna empresa analizada coincide</li>`;
+    box.hidden = false; input.setAttribute("aria-expanded","true");
+    if(at>=0){ input.setAttribute("aria-activedescendant", `${input.id}-o${at}`); box.children[at]?.scrollIntoView({block:"nearest"}); } else input.removeAttribute("aria-activedescendant");
+  };
+  const choose = t => { input.value = ""; close(); pick(t); };
+  input.addEventListener("input", () => {
+    const q = norm(input.value.trim()); if(!q){ close(); return; }
+    hits = list().filter(c => matchCo(c, q)).sort((a,b) => rankCo(a,q) - rankCo(b,q) || (a.name||a.ticker).localeCompare(b.name||b.ticker)).slice(0, 12);
+    at = hits.length ? 0 : -1; paint();
+  });
+  input.addEventListener("keydown", e => {
+    if(e.key==="Escape"){ if(!box.hidden){ e.preventDefault(); close(); } return; }
+    if(e.key==="Enter"){ e.preventDefault(); if(!box.hidden && hits[at]) choose(hits[at].ticker); return; }
+    if((e.key==="ArrowDown" || e.key==="ArrowUp") && hits.length){
+      e.preventDefault(); if(box.hidden){ at = 0; paint(); return; }
+      at = (at + (e.key==="ArrowDown" ? 1 : -1) + hits.length) % hits.length; paint();
+    }
+  });
+  input.addEventListener("blur", close);
+  box.addEventListener("mousedown", e => e.preventDefault());
+  box.addEventListener("click", e => { const li = e.target.closest("li[data-t]"); if(li) choose(li.dataset.t); });
+}
+coSearch($("#coQ"), companyList, t => { S.current = t; renderPicker(); });
+coSearch($("#peerQ"), () => companyList().filter(c => c.kind!=="fondo"), t => { $("#peerPick").value = t; renderPeers(); });
+
 /* ---------- Boot ---------- */
 function renderAll(){ renderPicker(); renderPeers(); renderPortfolios(); renderOpportunities(); renderFunds(); }
 renderAll();
@@ -1017,3 +1068,4 @@ fetch("precios.json").then(r => r.ok ? r.json() : null).then(j => { if(!j) retur
 })();
 })();
 </script>
+
