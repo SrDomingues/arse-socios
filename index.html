@@ -1,4 +1,5 @@
 <title>Círculo de Competencia · ARSE Socios</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -158,6 +159,13 @@ dl.ro dd.k{font-weight:600;color:var(--ink)}
 .pheat button{all:unset;cursor:pointer}
 svg text{font-family:var(--f-body)}
 ol.srcs{margin:0;padding-left:20px;font-size:13.5px} ol.srcs li{margin-bottom:4px;overflow-wrap:anywhere}
+/* Textos largos (enlaces de fuentes, datos de fondos, etiquetas) se parten antes que salirse de su columna */
+.panel{overflow-wrap:break-word}
+.src,ul.alerts li,.crit p,.aus p,.memo p,.vcols li{overflow-wrap:anywhere}
+dl.ro{grid-template-columns:minmax(96px,42%) minmax(0,1fr)}
+dl.ro dd{overflow-wrap:anywhere;min-width:0}
+dl.ro dt{min-width:0;padding-right:10px}
+.hurdles .pill,.verdict .pill,.badge .pill{white-space:normal}
 @media (max-width:600px){.brand h1{font-size:20px} h2{font-size:23px} nav.tabs{margin-left:0;width:100%}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
