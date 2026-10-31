@@ -157,7 +157,10 @@ let start = location.hash.slice(1); if(!views.includes(start)){ try{ start = loc
 show(start || "semana");
 window.addEventListener("hashchange", () => show(location.hash.slice(1)));
 
-const cartera = (cfg, id) => ["A","B"].filter(k => (cfg?.[k]?.valores||[]).includes(id)).join(" · ");
+// Pesos de cada cartera en %. Los informes antiguos se calcularon a pesos iguales y no los traen.
+const peso = (cfg, k, id) => typeof cfg?.[k]?.pesos === "object" ? cfg[k].pesos[id] : null;
+const cartera = (cfg, id) => ["A","B"].filter(k => (cfg?.[k]?.valores||[]).includes(id)).map(k => peso(cfg,k,id)!=null ? `${k} ${peso(cfg,k,id)} %` : k).join(" · ");
+const metodo = cfg => Object.values(cfg||{}).some(c => typeof c.pesos === "object") ? "con sus pesos" : "a pesos iguales";
 
 /* ---------- Informe semanal ---------- */
 function renderWeekPicker(){
@@ -169,7 +172,7 @@ $("#wkPick").addEventListener("change", e => renderWeek(+e.target.value));
 function pfCard(k, pf, rend){
   const ix = rend.indices || {}, sp = ix.SP500?.eur || {}, w = ix.WORLD?.eur || {};
   const k4 = (l, key) => `<div class="kpi"><div class="l">${l}</div><div class="v ${cls(pf.eur[key])}">${pct(pf.eur[key])}</div><div class="s">MSCI World ${pct(w[key])}</div></div>`;
-  return `<div class="panel pf"><h3>Cartera ${k} <span class="muted" style="font:500 13px var(--f-body)">${pf.valores.length} posiciones · pesos iguales · en euros</span></h3>
+  return `<div class="panel pf"><h3>Cartera ${k} <span class="muted" style="font:500 13px var(--f-body)">${pf.valores.length} posiciones · ${typeof pf.pesos === "object" ? "con sus pesos" : "pesos iguales"} · en euros</span></h3>
    <div class="kpis">${k4("Semana","semana")}${k4("Mes","mes")}${k4("Año","anio")}${k4("Desde ChatGPT","desdeRef")}</div></div>`;
 }
 function renderWeek(i){
@@ -179,7 +182,7 @@ function renderWeek(i){
   $("#wkPick").value = String(list.indexOf(x));
   $("#wkEyebrow").textContent = `Informe semanal · generado el ${fecha(x.generado)}`;
   $("#wkTitle").textContent = x.titular || `Semana del ${fecha(x.desde)} al ${fecha(x.hasta)}`;
-  $("#wkLede").textContent = `Semana del ${fecha(x.desde)} al ${fecha(x.hasta)}. Rentabilidades en euros con dividendos, al último cierre de cada bolsa; las carteras se calculan a pesos iguales porque no se conocen los pesos reales.`;
+  $("#wkLede").textContent = `Semana del ${fecha(x.desde)} al ${fecha(x.hasta)}. Rentabilidades en euros con dividendos, al último cierre de cada bolsa. ${metodo(cfg)==="con sus pesos" ? "Cada cartera se calcula con sus pesos, como si se hubieran tenido al principio de cada periodo." : "Este informe se calculó a pesos iguales."}`;
   const ids = [...new Set([...(cfg.A?.valores||[]), ...(cfg.B?.valores||[])])];
   const rows = ids.map(id => ({id, v: vals[id], c: x.valores?.[id] || {}})).filter(o => o.v).sort((a,b) => (b.v.eur.semana??-9) - (a.v.eur.semana??-9));
   const sig = s => SIGNAL[s] ? `<span class="pill ${SIGNAL[s][0]}">${SIGNAL[s][1]}</span>` : "";
@@ -230,11 +233,11 @@ function barChart(items, ix){
 function renderIA(){
   const x = D.ia; if(!x){ $("#iaLede").textContent = "No se pudo cargar el informe. Recargue la página."; return; }
   const r = x.rend, cfg = r.carteras || {}, vals = r.valores || {}, ix = r.indices || {};
-  $("#iaLede").textContent = `Para cada posición: si la IA generativa le ha ayudado, le ha sido indiferente o la amenaza, qué ha cambiado en el negocio y por qué la cotización ha hecho lo que ha hecho. La referencia es el cierre del ${fecha(r.referencia.fecha)}, víspera del lanzamiento de ChatGPT, hace menos de cuatro años; las rentabilidades llegan al ${fecha(Object.values(vals)[0]?.fecha)} y van en euros con dividendos. Investigado el ${fecha(x.generado)} con fuentes enlazadas en cada ficha y revisado por un verificador independiente.`;
+  $("#iaLede").textContent = `Para cada posición: si la IA generativa le ha ayudado, le ha sido indiferente o la amenaza, qué ha cambiado en el negocio y por qué la cotización ha hecho lo que ha hecho. La referencia es el cierre del ${fecha(r.referencia.fecha)}, víspera del lanzamiento de ChatGPT, hace menos de cuatro años; las rentabilidades llegan al ${fecha(Object.values(vals)[0]?.fecha)} y van en euros con dividendos. La rentabilidad de cada cartera aplica sus pesos actuales desde el inicio, así que es orientativa: la real depende de cuándo se compró cada posición. Investigado el ${fecha(x.generado)} con fuentes enlazadas en cada ficha y revisado por un verificador independiente.`;
   const ids = Object.keys(x.empresas).filter(id => D.cartera==="todas" || (cfg[D.cartera]?.valores||[]).includes(id));
   const items = ids.map(id => ({id, n: vals[id]?.nombre || id, r: vals[id]?.eur?.desdeRef, imp: x.empresas[id].impactoIA})).filter(o => isFinite(o.r)).sort((a,b) => b.r - a.r);
   const pfs = ["A","B"].filter(k => cfg[k]);
-  const pfLine = pfs.map(k => `Cartera ${k} (pesos iguales): <b class="mono">${pct(cfg[k].eur.desdeRef,0)}</b>`).join(" · ");
+  const pfLine = pfs.map(k => `Cartera ${k} (${metodo({[k]:cfg[k]})}): <b class="mono">${pct(cfg[k].eur.desdeRef,1)}</b>`).join(" · ");
   const legend = Object.entries(IMPACT).map(([k,[,c]]) => `<span><i class="dot" style="background:${c}"></i>${k}</span>`).join("");
   const concl = x.conclusiones || {};
   $("#iaBody").innerHTML = `
