@@ -1,0 +1,276 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Informe de Carteras ARSE</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: el mismo cuaderno de analista que «Círculo de Competencia» — cabecera fija con dos pestañas (semana e IA) y una columna de 1100px. */
+:root{
+  --paper:#F4F6F3; --surface:#FFFFFF; --ink:#17201B; --muted:#5B6862; --line:#D6DCD7;
+  --accent:#1F5C4A; --accent-soft:#E2EEE8; --good:#2E7D4F; --bad:#B3412E; --warn:#9A6E0E; --info:#3B5B8C;
+  --f-display:"Libre Caslon Text", Georgia, "Times New Roman", serif;
+  --f-body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#101513; --surface:#161D1A; --ink:#E5ECE8; --muted:#9AA8A1; --line:#2A3430;
+  --accent:#6CC3A3; --accent-soft:#1D2E28; --good:#5BC28A; --bad:#E0735E; --warn:#D9A93F; --info:#8FB0E0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#101513; --surface:#161D1A; --ink:#E5ECE8; --muted:#9AA8A1; --line:#2A3430;
+  --accent:#6CC3A3; --accent-soft:#1D2E28; --good:#5BC28A; --bad:#E0735E; --warn:#D9A93F; --info:#8FB0E0; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--paper)}
+.wrap{max-width:1100px;margin:0 auto}
+header.top{position:sticky;top:env(safe-area-inset-top, 0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;padding-block:14px 0}
+.org{flex:1 0 100%;display:flex;align-items:center;gap:8px;font:700 11.5px var(--f-body);letter-spacing:.22em;padding-bottom:2px}
+.org-mark{width:14px;height:14px;border:2px solid var(--accent);border-radius:50%;box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 7px var(--accent)}
+.brand{display:flex;align-items:baseline;gap:10px;padding-bottom:12px;flex-wrap:wrap}
+.brand h1{font-family:var(--f-display);font-size:24px;margin:0}
+.brand span{color:var(--muted);font-size:13px}
+nav.tabs{display:flex;gap:4px;margin-left:auto;overflow-x:auto}
+nav.tabs button{font:600 14px var(--f-body);color:var(--muted);background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px 11px;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section.view{padding-top:24px}
+h2{font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1.2;margin:0 0 4px;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:700;font-size:18px;margin:0;text-wrap:balance}
+.lede{color:var(--muted);margin:0 0 18px;max-width:72ch}
+.eyebrow{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px;min-width:0;overflow-wrap:break-word}
+.row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+select{font:15px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;max-width:100%}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:600 13px var(--f-body);padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.pill.good{color:var(--good)} .pill.bad{color:var(--bad)} .pill.warn{color:var(--warn)} .pill.info{color:var(--info)} .pill.neutral{color:var(--muted)}
+.up{color:var(--good)} .down{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:18px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;white-space:nowrap}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+/* Resumen de cartera */
+.pf h3{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:6px;margin-top:12px}
+.kpi{padding:10px 12px;border-right:1px solid var(--line);min-width:0}
+.kpi:last-child{border-right:0}
+.kpi .l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi .v{font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi .s{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.pfs{display:grid;gap:14px}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:nth-child(2){border-right:0}.kpi:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:0;margin-right:6px}
+.memo{max-width:75ch}
+.memo p{margin:0 0 10px}
+ul.plain{margin:0;padding-left:18px} ul.plain li{margin-bottom:6px}
+.news{display:grid;gap:14px}
+.newsco{border-top:1px solid var(--line);padding-top:12px;display:grid;gap:6px}
+.newsco:first-child{border-top:0;padding-top:0}
+.newsco .h{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
+.newsco .h b{font-size:15px}
+.newsco p{margin:0;font-size:14px;max-width:80ch}
+.newsco ul{margin:0;padding-left:18px;font-size:14px}
+.sechead{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:baseline;margin:30px 0 12px;padding-top:16px;border-top:2px solid var(--ink)}
+.sechead h2{margin:0}
+/* IA */
+.chart svg{width:100%;height:auto;display:block}
+svg text{font-family:var(--f-body)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.cards{display:grid;gap:18px}
+.card{display:grid;gap:12px}
+.card .head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;justify-content:space-between}
+.card .tit{font-family:var(--f-display);font-size:17px;margin:0;max-width:75ch}
+.figs{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted)}
+.figs b{font-family:var(--f-mono);color:var(--ink);font-weight:500}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px 22px}
+.cols>div{min-width:0}
+.cols h4,.card h4{margin:0 0 4px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.cols p,.card p{margin:0;font-size:14.5px}
+ol.hitos{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:14px}
+ol.hitos li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px}
+ol.hitos .d{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);padding-top:1px}
+ol.srcs{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted)} ol.srcs li{overflow-wrap:anywhere}
+details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--accent)}
+.note{font-size:12.5px;color:var(--muted);margin:10px 0 0;max-width:90ch}
+@media (max-width:600px){.brand h1{font-size:20px} h2{font-size:23px} nav.tabs{margin-left:0;width:100%}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="org"><span class="org-mark" aria-hidden="true"></span>ARSE SOCIOS</div>
+  <div class="brand"><h1>Informe de carteras</h1><span id="brandSub">Cartera A y cartera B</span></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-semana" data-view="semana">Informe semanal</button>
+    <button role="tab" id="tab-ia" data-view="ia">La IA desde 2022</button>
+  </nav>
+</header>
+
+<section class="view" id="view-semana" hidden>
+  <div class="row" style="justify-content:space-between;margin-bottom:6px">
+    <div style="min-width:0"><div class="eyebrow" id="wkEyebrow">Informe semanal</div><h2 id="wkTitle">Cargando el informe…</h2></div>
+    <label class="f" id="wkPickWrap" hidden>Otra semana <select id="wkPick"></select></label>
+  </div>
+  <p class="lede" id="wkLede"></p>
+  <div id="wkBody"></div>
+</section>
+
+<section class="view" id="view-ia" hidden>
+  <div class="eyebrow">Desde el lanzamiento de ChatGPT, 30 de noviembre de 2022</div>
+  <h2>Qué ha significado la IA para cada posición</h2>
+  <p class="lede" id="iaLede">Cargando el informe…</p>
+  <div id="iaBody"></div>
+</section>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct = (v, d=1, sign=true) => (v==null || !isFinite(v)) ? "—" : (sign && v>0 ? "+" : "") + (v*100).toLocaleString("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}) + " %";
+const cls = v => !isFinite(v) || v==null ? "" : v>0 ? "up" : v<0 ? "down" : "";
+const num = (v, cur) => { if(v==null||!isFinite(v)) return "—"; const d = v>=1000?0:v>=100?1:2; return v.toLocaleString("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}) + (cur ? " "+(cur==="GBp"?"p":cur) : ""); };
+const fecha = s => { const d = new Date(s); return isNaN(d) ? esc(s||"") : d.toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}); };
+const safeUrl = u => /^https?:\/\//i.test(String(u||"")) ? esc(u) : "#";
+const IMPACT = {"Beneficiario directo":["good","var(--good)"],"Beneficiario indirecto":["info","var(--info)"],"Neutral":["neutral","var(--muted)"],"Mixto":["warn","var(--warn)"],"Amenazado":["bad","var(--bad)"]};
+const SIGNAL = {verde:["good","Bien"],ambar:["warn","Vigilar"],rojo:["bad","Atención"]};
+const D = { semanal:null, ia:null, cartera:"todas" };
+
+/* ---------- Pestañas ---------- */
+const views = ["semana","ia"];
+function show(v){ if(!views.includes(v)) v="semana"; views.forEach(x => { $("#view-"+x).hidden = x!==v; $("#tab-"+x).setAttribute("aria-selected", x===v); }); try{ localStorage.setItem("informe.tab", v) }catch(e){} }
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => { show(b.dataset.view); history.replaceState(null,"","#"+b.dataset.view); }));
+let start = location.hash.slice(1); if(!views.includes(start)){ try{ start = localStorage.getItem("informe.tab") }catch(e){ start = null } }
+show(start || "semana");
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+
+const cartera = (cfg, id) => ["A","B"].filter(k => (cfg?.[k]?.valores||[]).includes(id)).join(" · ");
+
+/* ---------- Informe semanal ---------- */
+function renderWeekPicker(){
+  const list = D.semanal?.informes || [];
+  $("#wkPickWrap").hidden = list.length < 2;
+  $("#wkPick").innerHTML = list.map((x,i) => `<option value="${i}">Semana del ${esc(fecha(x.desde))} al ${esc(fecha(x.hasta))}</option>`).join("");
+}
+$("#wkPick").addEventListener("change", e => renderWeek(+e.target.value));
+function pfCard(k, pf, rend){
+  const ix = rend.indices || {}, sp = ix.SP500?.eur || {}, w = ix.WORLD?.eur || {};
+  const k4 = (l, key) => `<div class="kpi"><div class="l">${l}</div><div class="v ${cls(pf.eur[key])}">${pct(pf.eur[key])}</div><div class="s">MSCI World ${pct(w[key])}</div></div>`;
+  return `<div class="panel pf"><h3>Cartera ${k} <span class="muted" style="font:500 13px var(--f-body)">${pf.valores.length} posiciones · pesos iguales · en euros</span></h3>
+   <div class="kpis">${k4("Semana","semana")}${k4("Mes","mes")}${k4("Año","anio")}${k4("Desde ChatGPT","desdeRef")}</div></div>`;
+}
+function renderWeek(i){
+  const list = D.semanal?.informes || [];
+  if(!list.length){ $("#wkTitle").textContent = "Aún no hay informes semanales"; $("#wkLede").textContent = "El primer informe aparecerá aquí cuando se ejecute la tarea semanal."; $("#wkBody").innerHTML = ""; return; }
+  const x = list[i] || list[0], r = x.rend, vals = r.valores || {}, cfg = r.carteras || {};
+  $("#wkPick").value = String(list.indexOf(x));
+  $("#wkEyebrow").textContent = `Informe semanal · generado el ${fecha(x.generado)}`;
+  $("#wkTitle").textContent = x.titular || `Semana del ${fecha(x.desde)} al ${fecha(x.hasta)}`;
+  $("#wkLede").textContent = `Semana del ${fecha(x.desde)} al ${fecha(x.hasta)}. Rentabilidades en euros con dividendos, al último cierre de cada bolsa; las carteras se calculan a pesos iguales porque no se conocen los pesos reales.`;
+  const ids = [...new Set([...(cfg.A?.valores||[]), ...(cfg.B?.valores||[])])];
+  const rows = ids.map(id => ({id, v: vals[id], c: x.valores?.[id] || {}})).filter(o => o.v).sort((a,b) => (b.v.eur.semana??-9) - (a.v.eur.semana??-9));
+  const sig = s => SIGNAL[s] ? `<span class="pill ${SIGNAL[s][0]}">${SIGNAL[s][1]}</span>` : "";
+  const table = `<div class="tablewrap"><table><thead><tr><th>Valor</th><th>Cartera</th><th class="n">Precio</th><th class="n">Semana</th><th class="n">Mes</th><th class="n">Año</th><th class="n">Desde ChatGPT</th><th>Lectura</th></tr></thead><tbody>
+    ${rows.map(o => `<tr><td><b>${esc(o.v.nombre)}</b><div class="muted mono" style="font-size:12px">${esc(o.v.yahoo)}</div></td><td>${esc(cartera(cfg,o.id))}</td>
+     <td class="n">${num(o.v.precio, o.v.moneda)}<div class="muted" style="font-size:11.5px">${esc(o.v.fecha)}</div></td>
+     <td class="n ${cls(o.v.eur.semana)}"><b>${pct(o.v.eur.semana)}</b></td><td class="n ${cls(o.v.eur.mes)}">${pct(o.v.eur.mes)}</td><td class="n ${cls(o.v.eur.anio)}">${pct(o.v.eur.anio)}</td><td class="n ${cls(o.v.eur.desdeRef)}">${pct(o.v.eur.desdeRef,0)}</td>
+     <td style="min-width:220px">${sig(o.c.senal)} <span style="font-size:13.5px">${esc(o.c.comentario||"")}</span></td></tr>`).join("")}</tbody></table></div>`;
+  const news = rows.filter(o => (o.c.noticias||[]).length || o.c.detalle);
+  const newsHtml = news.length ? `<div class="panel news">${news.map(o => `<div class="newsco"><div class="h"><b>${esc(o.v.nombre)}</b><span class="mono ${cls(o.v.eur.semana)}">${pct(o.v.eur.semana)}</span>${sig(o.c.senal)}</div>
+     ${o.c.detalle ? `<p>${esc(o.c.detalle)}</p>` : ""}
+     ${(o.c.noticias||[]).length ? `<ul>${o.c.noticias.map(n => `<li><span class="muted mono" style="font-size:12px">${esc(n.fecha||"")}</span> ${esc(n.titulo)} ${n.url?`<a href="${safeUrl(n.url)}" target="_blank" rel="noopener">fuente</a>`:""}</li>`).join("")}</ul>` : ""}</div>`).join("")}</div>` : `<p class="muted">Sin noticias relevantes esta semana.</p>`;
+  const ix = r.indices || {};
+  $("#wkBody").innerHTML = `
+   <div class="pfs">${["A","B"].filter(k => cfg[k]).map(k => pfCard(k, cfg[k], r)).join("")}</div>
+   <p class="note">Referencias en euros esta semana: S&amp;P 500 ${pct(ix.SP500?.eur?.semana)}, Nasdaq 100 ${pct(ix.NDX?.eur?.semana)}, MSCI World ${pct(ix.WORLD?.eur?.semana)}.</p>
+   ${x.resumen ? `<div class="sechead"><h2>Lo importante</h2></div><div class="panel memo">${String(x.resumen).split(/\n+/).map(p => `<p>${esc(p)}</p>`).join("")}${(x.destacados||[]).length ? `<ul class="plain">${x.destacados.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}</div>` : ""}
+   <div class="sechead"><h2>Posiciones</h2><span class="muted" style="font-size:13px">Ordenadas por la rentabilidad de la semana</span></div>
+   ${table}
+   <div class="sechead"><h2>Noticias de la semana</h2></div>
+   ${newsHtml}
+   ${(x.agenda||[]).length ? `<div class="sechead"><h2>Próxima semana</h2></div><div class="panel"><ol class="hitos">${x.agenda.map(a => `<li><span class="d">${esc(a.fecha)}</span><span>${esc(a.evento)}</span></li>`).join("")}</ol></div>` : ""}
+   ${(r.errores||[]).length ? `<p class="note">Sin datos de precio esta semana: ${esc(r.errores.join("; "))}.</p>` : ""}`;
+}
+
+/* ---------- La IA desde 2022 ---------- */
+function barChart(items, ix){
+  // Rentabilidad en euros desde el 29-nov-2022, una barra por valor, con líneas de referencia del S&P 500 y el MSCI World
+  const W = 760, rowH = 26, L = 200, R = 70, T = 28, B = T + items.length*rowH + 4, H = B + 36;
+  const vals = items.map(o => o.r).concat([ix.SP500?.eur?.desdeRef, ix.WORLD?.eur?.desdeRef]).filter(isFinite);
+  const lo = Math.min(0, ...vals), hi = Math.max(0, ...vals), X = v => L + (v-lo)/(hi-lo)*(W-L-R);
+  const step = hi-lo > 2 ? 1 : 0.5, ticks = []; for(let t = Math.ceil(lo/step)*step; t <= hi+1e-9; t += step) ticks.push(t);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rentabilidad en euros desde el lanzamiento de ChatGPT por valor">`;
+  ticks.forEach(t => s += `<line x1="${X(t)}" x2="${X(t)}" y1="${T-6}" y2="${B}" stroke="var(--line)"/><text x="${X(t)}" y="${T-12}" text-anchor="middle" font-size="11" fill="var(--muted)">${t>0?"+":""}${Math.round(t*100)} %</text>`);
+  // Índices de referencia: línea discontinua y su etiqueta debajo de la última barra, una por fila
+  [["SP500","S&P 500"],["WORLD","MSCI World"]].forEach(([k,n],j) => { const v = ix[k]?.eur?.desdeRef; if(!isFinite(v)) return;
+    s += `<line x1="${X(v)}" x2="${X(v)}" y1="${T-6}" y2="${B + 6 + j*14}" stroke="var(--ink)" stroke-dasharray="3 3" stroke-opacity=".55"/><text x="${X(v)+4}" y="${B + 14 + j*14}" font-size="10.5" fill="var(--muted)">${n} ${pct(v,0)}</text>`; });
+  s += `<line x1="${X(0)}" x2="${X(0)}" y1="${T-6}" y2="${B}" stroke="var(--muted)"/>`;
+  items.forEach((o,i) => {
+    const y = T + i*rowH + 4, x0 = X(Math.min(0,o.r)), w = Math.max(1, Math.abs(X(o.r)-X(0))), col = IMPACT[o.imp]?.[1] || "var(--muted)";
+    s += `<text x="${L-10}" y="${y+13}" text-anchor="end" font-size="12.5" fill="var(--ink)">${esc(o.n)}</text>`;
+    s += `<rect x="${x0}" y="${y+2}" width="${w}" height="${rowH-10}" rx="2" fill="${col}" fill-opacity=".85"><title>${esc(o.n)}: ${pct(o.r)} · ${esc(o.imp||"")}</title></rect>`;
+    // La cifra va a la derecha de la barra, o del eje del cero si es negativa, para no pisar el nombre
+    s += `<text x="${Math.max(X(o.r), X(0)) + 5}" y="${y+13}" font-size="11.5" font-family="IBM Plex Mono, monospace" fill="${o.r<0?"var(--bad)":"var(--ink)"}">${pct(o.r,0)}</text>`;
+  });
+  return s + `</svg>`;
+}
+function renderIA(){
+  const x = D.ia; if(!x){ $("#iaLede").textContent = "No se pudo cargar el informe. Recargue la página."; return; }
+  const r = x.rend, cfg = r.carteras || {}, vals = r.valores || {}, ix = r.indices || {};
+  $("#iaLede").textContent = `Para cada posición: si la IA generativa le ha ayudado, le ha sido indiferente o la amenaza, qué ha cambiado en el negocio y por qué la cotización ha hecho lo que ha hecho. La referencia es el cierre del ${fecha(r.referencia.fecha)}, víspera del lanzamiento de ChatGPT, hace menos de cuatro años; las rentabilidades llegan al ${fecha(Object.values(vals)[0]?.fecha)} y van en euros con dividendos. Investigado el ${fecha(x.generado)} con fuentes enlazadas en cada ficha y revisado por un verificador independiente.`;
+  const ids = Object.keys(x.empresas).filter(id => D.cartera==="todas" || (cfg[D.cartera]?.valores||[]).includes(id));
+  const items = ids.map(id => ({id, n: vals[id]?.nombre || id, r: vals[id]?.eur?.desdeRef, imp: x.empresas[id].impactoIA})).filter(o => isFinite(o.r)).sort((a,b) => b.r - a.r);
+  const pfs = ["A","B"].filter(k => cfg[k]);
+  const pfLine = pfs.map(k => `Cartera ${k} (pesos iguales): <b class="mono">${pct(cfg[k].eur.desdeRef,0)}</b>`).join(" · ");
+  const legend = Object.entries(IMPACT).map(([k,[,c]]) => `<span><i class="dot" style="background:${c}"></i>${k}</span>`).join("");
+  const concl = x.conclusiones || {};
+  $("#iaBody").innerHTML = `
+   <div class="row" style="margin-bottom:14px"><div class="seg" role="group" aria-label="Filtrar por cartera">${["todas","A","B"].map(k => `<button type="button" data-pf="${k}" aria-pressed="${D.cartera===k}">${k==="todas"?"Todas":"Cartera "+k}</button>`).join("")}</div></div>
+   ${concl.general ? `<div class="panel memo" style="margin-bottom:18px"><h3 style="margin-bottom:8px">Conclusión</h3><p>${esc(concl.general)}</p>${["A","B"].filter(k => concl[k] && (D.cartera==="todas" || D.cartera===k)).map(k => `<p><b>Cartera ${k}.</b> ${esc(concl[k])}</p>`).join("")}</div>` : ""}
+   <div class="panel chart"><h3 style="margin-bottom:4px">Rentabilidad en euros desde ChatGPT</h3><p class="muted" style="margin:0 0 8px;font-size:13.5px">${pfLine}. Color: relación de cada valor con la IA.</p>
+     <div style="overflow-x:auto"><div style="min-width:560px">${barChart(items, ix)}</div></div><div class="legend">${legend}</div></div>
+   <div class="sechead"><h2>Valor a valor</h2><span class="muted" style="font-size:13px">Ordenados por rentabilidad desde ChatGPT</span></div>
+   <div class="cards">${items.map(o => card(o.id, x.empresas[o.id], vals[o.id], cfg)).join("")}</div>`;
+  $("#iaBody").querySelectorAll("[data-pf]").forEach(b => b.addEventListener("click", () => { D.cartera = b.dataset.pf; renderIA(); }));
+}
+function card(id, e, v, cfg){
+  const [k] = IMPACT[e.impactoIA] || ["neutral"];
+  return `<article class="panel card" id="ia-${esc(id)}">
+   <div class="head"><div style="min-width:0"><div class="eyebrow">${esc(cartera(cfg,id) ? "Cartera "+cartera(cfg,id) : "")}</div><h3>${esc(v?.nombre || id)}</h3></div><span class="pill ${k}">${esc(e.impactoIA)}</span></div>
+   <p class="tit">${esc(e.titular)}</p>
+   <div class="figs"><span>Desde ChatGPT en euros <b class="${cls(v?.eur?.desdeRef)}">${pct(v?.eur?.desdeRef)}</b></span><span>En ${esc(v?.moneda==="GBp"?"GBP":v?.moneda)} <b>${pct(v?.local?.desdeRef)}</b></span><span>Máxima caída <b>${pct(v?.eur?.maxCaida,0)}</b></span><span>En 2026 <b class="${cls(v?.eur?.anio)}">${pct(v?.eur?.anio)}</b></span></div>
+   ${v?.nota ? `<p class="note" style="margin:0">${esc(v.nota)}.</p>` : ""}
+   <p>${esc(e.resumen)}</p>
+   <div class="cols">
+     <div><h4>El negocio desde 2022</h4><p>${esc(e.fundamentales)}</p></div>
+     <div><h4>Por qué cotiza así</h4><p>${esc(e.explicacionCotizacion)}</p></div>
+     <div><h4>Oportunidad de la IA</h4><p>${esc(e.oportunidadIA)}</p></div>
+     <div><h4>Riesgo de la IA</h4><p>${esc(e.riesgoIA)}</p></div>
+   </div>
+   ${(e.hitos||[]).length ? `<div><h4>Hitos</h4><ol class="hitos">${e.hitos.map(h => `<li><span class="d">${esc(h.fecha)}</span><span>${esc(h.hecho)}</span></li>`).join("")}</ol></div>` : ""}
+   ${(e.queVigilar||[]).length ? `<div><h4>Qué vigilar</h4><ul class="plain" style="font-size:14px">${e.queVigilar.map(q => `<li>${esc(q)}</li>`).join("")}</ul></div>` : ""}
+   ${(e.fuentes||[]).length ? `<details><summary>Fuentes (${e.fuentes.length})</summary><ol class="srcs">${e.fuentes.map(f => `<li><a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${esc(f.titulo||f.url)}</a></li>`).join("")}</ol></details>` : ""}
+  </article>`;
+}
+
+/* ---------- Datos ---------- */
+const load = f => fetch(f, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+Promise.all([load("semanal.json"), load("informe-ia.json")]).then(([s, ia]) => {
+  D.semanal = s; D.ia = ia; renderWeekPicker(); renderWeek(0); renderIA();
+});
+})();
+</script>
+</body></html>
