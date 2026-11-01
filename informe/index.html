@@ -71,6 +71,19 @@ tr:last-child td{border-bottom:0}
 .kpi .v{font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .kpi .s{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
 .pfs{display:grid;gap:14px}
+button.kpi{all:unset;box-sizing:border-box;padding:10px 12px;border-right:1px solid var(--line);min-width:0;cursor:pointer}
+button.kpi:last-child{border-right:0}
+button.kpi[aria-pressed="true"]{background:var(--accent-soft);box-shadow:inset 0 -3px 0 var(--accent)}
+button.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* Gráfica de evolución: línea principal, MSCI World discontinuo, cero, y lectura al pasar el ratón */
+.chartbox{position:relative;margin-top:12px}
+.chartbox .ctl{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.chartbox .key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.chartbox .key i{display:inline-block;width:16px;height:0;border-top:2px solid;vertical-align:middle;margin-right:5px}
+.chartbox svg{width:100%;height:auto;display:block;touch-action:pan-y}
+.chartbox .tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12.5px;box-shadow:0 4px 14px rgb(0 0 0 / .12);white-space:nowrap;font-variant-numeric:tabular-nums}
+.chartbox .tip b{font-family:var(--f-mono);font-weight:500}
+.seg.small button{padding:4px 10px;font-size:12px}
 @media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi:nth-child(2){border-right:0}.kpi:nth-child(-n+2){border-bottom:1px solid var(--line)}}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:0;margin-right:6px}
 .memo{max-width:75ch}
@@ -208,10 +221,98 @@ function renderWeekPicker(){
 }
 $("#wkPick").addEventListener("change", e => renderWeek(+e.target.value));
 function pfCard(k, pf, rend){
-  const ix = rend.indices || {}, sp = ix.SP500?.eur || {}, w = ix.WORLD?.eur || {};
-  const k4 = (l, key) => `<div class="kpi"><div class="l">${l}</div><div class="v ${cls(pf.eur[key])}">${pct(pf.eur[key])}</div><div class="s">MSCI World ${pct(w[key])}</div></div>`;
-  return `<div class="panel pf"><h3>Cartera ${k} <span class="muted" style="font:500 13px var(--f-body)">${pf.valores.length} posiciones · ${typeof pf.pesos === "object" ? "con sus pesos" : "pesos iguales"} · en euros</span></h3>
-   <div class="kpis">${k4("Semana","semana")}${k4("Mes","mes")}${k4("Año","anio")}${k4("Desde ChatGPT","desdeRef")}</div></div>`;
+  const ix = rend.indices || {}, w = ix.WORLD?.eur || {}, conGrafica = !!D.series && typeof pf.pesos === "object";
+  // Con gráfica, cada recuadro es también el botón que elige el periodo
+  const k4 = (l, key) => conGrafica
+    ? `<button type="button" class="kpi" data-p="${key}" aria-pressed="${key===PERIODO_PF}"><div class="l">${l}</div><div class="v ${cls(pf.eur[key])}">${pct(pf.eur[key])}</div><div class="s">MSCI World ${pct(w[key])}</div></button>`
+    : `<div class="kpi"><div class="l">${l}</div><div class="v ${cls(pf.eur[key])}">${pct(pf.eur[key])}</div><div class="s">MSCI World ${pct(w[key])}</div></div>`;
+  return `<div class="panel pf" data-pf-card="${k}"><h3>Cartera ${k} <span class="muted" style="font:500 13px var(--f-body)">${pf.valores.length} posiciones · ${typeof pf.pesos === "object" ? "con sus pesos" : "pesos iguales"} · en euros</span></h3>
+   <div class="kpis">${k4("Semana","semana")}${k4("Mes","mes")}${k4("Año","anio")}${k4("Desde ChatGPT","desdeRef")}</div>
+   ${conGrafica ? `<div class="chartbox" data-chart="pf-${k}"></div>` : ""}</div>`;
+}
+
+/* ---------- Gráficas de evolución ---------- */
+const PERIODOS = [["semana","Semana"],["mes","Mes"],["anio","Año"],["desdeRef","Desde ChatGPT"]];
+let PERIODO_PF = "anio";
+const idxHasta = (fechas, d) => { let lo = 0, hi = fechas.length - 1, r = 0; while(lo <= hi){ const m = (lo + hi) >> 1; if(fechas[m] <= d){ r = m; lo = m + 1; } else hi = m - 1; } return r; };
+const isoMenos = (d, dias) => new Date(Date.parse(d + "T12:00:00Z") - dias*864e5).toISOString().slice(0,10);
+// Mismo criterio que el cálculo de las rentabilidades: semana = 7 días antes, mes = 30, año = 31 de diciembre anterior
+function ventana(S, periodo, hasta){
+  const iEnd = idxHasta(S.fechas, hasta || S.fechas[S.fechas.length-1]), dEnd = S.fechas[iEnd];
+  if(periodo === "desdeRef") return [0, iEnd];
+  const obj = periodo === "semana" ? isoMenos(dEnd, 7) : periodo === "mes" ? isoMenos(dEnd, 30) : `${dEnd.slice(0,4) - 1}-12-31`;
+  return [idxHasta(S.fechas, obj), iEnd];
+}
+const curvaValor = (S, id, i0, i1) => { const s = S.series[id]; if(!s || s[i0] == null) return null; const b = s[i0]; return s.slice(i0, i1 + 1).map(v => v == null ? null : v / b - 1); };
+// Cartera: pesos al principio del periodo, sin rebalancear (como las rentabilidades de los recuadros)
+function curvaCartera(S, pesos, i0, i1){
+  const ids = Object.keys(pesos).filter(id => S.series[id] && S.series[id][i0] != null);
+  const w = ids.reduce((s, id) => s + pesos[id], 0); if(!w) return null;
+  const out = []; for(let t = i0; t <= i1; t++) out.push(ids.reduce((s, id) => s + pesos[id] * (S.series[id][t] ?? S.series[id][i0]) / S.series[id][i0], 0) / w - 1);
+  return out;
+}
+const fechaCorta = (d, largo) => new Date(d + "T12:00:00Z").toLocaleDateString("es-ES", largo ? {day:"numeric", month:"short", year:"2-digit"} : {day:"numeric", month:"short"});
+function dibujar(box, fechas, lineas){
+  // Se dibuja al ancho real del recuadro para que el texto se lea igual en el móvil que en el ordenador
+  const area0 = box.querySelector(".plot"), W = Math.max(300, Math.round(area0.clientWidth || 720)), estrecho = W < 520;
+  const H = estrecho ? 210 : 230, L = estrecho ? 44 : 52, R = estrecho ? 56 : 64, T = 12, B = 28, n = fechas.length;
+  const all = lineas.flatMap(l => l.v).filter(v => v != null && isFinite(v)).concat([0]);
+  let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo) * 0.08 || 0.01; lo -= pad; hi += pad;
+  const X = i => L + (n < 2 ? 0 : i / (n - 1)) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const span = hi - lo, steps = [0.005,0.01,0.02,0.05,0.1,0.2,0.25,0.5,1,2], step = steps.find(s => span / s <= 6) || 5;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución de la rentabilidad">`;
+  for(let t = Math.ceil(lo / step) * step; t <= hi; t += step){ const y = Y(t), cero = Math.abs(t) < 1e-9; s += `<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="${cero ? "var(--muted)" : "var(--line)"}" stroke-width="${cero ? 1.5 : 1}"/><text x="${L-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${t>0?"+":""}${(t*100).toLocaleString("es-ES",{maximumFractionDigits: step<0.01?1:0})} %</text>`; }
+  const nx = Math.min(estrecho ? 3 : 5, n), largo = (Date.parse(fechas[n-1]) - Date.parse(fechas[0])) > 300*864e5;
+  for(let k = 0; k < nx; k++){ const i = nx < 2 ? 0 : Math.round(k * (n - 1) / (nx - 1)); s += `<text x="${X(i)}" y="${H-8}" text-anchor="${k===0?"start":k===nx-1?"end":"middle"}" font-size="11" fill="var(--muted)">${fechaCorta(fechas[i], largo)}</text>`; }
+  const path = v => v.map((y, i) => y == null ? "" : `${i && v[i-1] != null ? "L" : "M"}${X(i).toFixed(1)},${Y(y).toFixed(1)}`).join("");
+  const main = lineas[0];
+  s += `<path d="${path(main.v)}L${X(n-1)},${Y(0)}L${X(0)},${Y(0)}Z" fill="var(--accent)" fill-opacity=".08"/>`;
+  lineas.slice().reverse().forEach(l => s += `<path d="${path(l.v)}" fill="none" stroke="${l.color}" stroke-width="${l.ancho||2}"${l.discontinua ? ' stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`);
+  // Cifra final de cada línea; si dos quedan a menos de 13 px, se separan para que no se pisen
+  const fin = lineas.map(l => ({ l, v: l.v[n-1] })).filter(o => o.v != null).map(o => ({ ...o, y: Y(o.v) + 4 })).sort((a, b) => a.y - b.y);
+  for(let i = 1; i < fin.length; i++) if(fin[i].y - fin[i-1].y < 13) fin[i].y = fin[i-1].y + 13;
+  fin.forEach(o => s += `<circle cx="${X(n-1)}" cy="${Y(o.v)}" r="3.5" fill="${o.l.color}"/><text x="${X(n-1)+7}" y="${o.y}" font-size="11.5" font-family="IBM Plex Mono, monospace" fill="${o.l.color}">${pct(o.v,1)}</text>`);
+  s += `<line class="cur" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-dasharray="2 3" visibility="hidden"/><rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="transparent"/></svg>`;
+  const area = box.querySelector(".plot"); area.innerHTML = s + `<div class="tip" hidden></div>`;
+  const svg = area.querySelector("svg"), tip = area.querySelector(".tip"), cur = svg.querySelector(".cur");
+  const mover = ev => {
+    const r = svg.getBoundingClientRect(), x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left, sx = x / r.width * W;
+    const i = Math.max(0, Math.min(n - 1, Math.round((sx - L) / (W - L - R) * (n - 1)))), px = X(i) / W * r.width;
+    cur.setAttribute("x1", X(i)); cur.setAttribute("x2", X(i)); cur.setAttribute("visibility", "visible");
+    tip.innerHTML = `<div class="muted">${new Date(fechas[i] + "T12:00:00Z").toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"})}</div>` + lineas.map(l => `<div><span style="color:${l.color}">●</span> ${esc(l.nombre)} <b>${pct(l.v[i],1)}</b></div>`).join("");
+    tip.hidden = false; const tw = tip.offsetWidth; tip.style.left = Math.max(0, Math.min(r.width - tw, px + 12 > r.width - tw ? px - tw - 12 : px + 12)) + "px"; tip.style.top = "8px";
+  };
+  const salir = () => { tip.hidden = true; cur.setAttribute("visibility", "hidden"); };
+  svg.addEventListener("pointermove", mover); svg.addEventListener("pointerleave", salir); svg.addEventListener("touchstart", mover, {passive:true});
+}
+// Monta una gráfica con botones de periodo. obtener(periodo) devuelve {fechas, lineas}; alCambiar avisa a quien la contiene
+function montarGrafica(box, periodo, obtener, alCambiar, conBotones = true){
+  box.innerHTML = `<div class="ctl">${conBotones ? `<div class="seg small" role="group" aria-label="Periodo de la gráfica">${PERIODOS.map(([k,l]) => `<button type="button" data-g="${k}" aria-pressed="${k===periodo}">${l}</button>`).join("")}</div>` : "<span></span>"}<div class="key"></div></div><div class="plot"></div>`;
+  const pintar = p => {
+    box.querySelectorAll("[data-g]").forEach(b => b.setAttribute("aria-pressed", b.dataset.g === p));
+    const g = obtener(p); if(!g){ box.querySelector(".plot").innerHTML = `<p class="muted">Sin datos para este periodo.</p>`; return; }
+    box.querySelector(".key").innerHTML = g.lineas.map(l => `<span><i style="border-color:${l.color};${l.discontinua?"border-top-style:dashed":""}"></i>${esc(l.nombre)}</span>`).join("");
+    dibujar(box, g.fechas, g.lineas);
+  };
+  let actual = periodo;
+  const elegir = p => { actual = p; pintar(p); };
+  box.querySelectorAll("[data-g]").forEach(b => b.addEventListener("click", () => { elegir(b.dataset.g); alCambiar && alCambiar(b.dataset.g); }));
+  elegir(periodo);
+  // Si cambia el ancho (giro del móvil, ventana), se vuelve a dibujar
+  if(window.ResizeObserver){ let w0 = box.clientWidth, tm; new ResizeObserver(() => { if(Math.abs(box.clientWidth - w0) < 8) return; w0 = box.clientWidth; clearTimeout(tm); tm = setTimeout(() => pintar(actual), 120); }).observe(box); }
+  return elegir;
+}
+const lineaWorld = (S, i0, i1) => ({ nombre: "MSCI World", v: curvaValor(S, "WORLD", i0, i1), color: "var(--muted)", discontinua: true, ancho: 1.5 });
+function montarCarteras(x){
+  const S = D.series; if(!S) return;
+  document.querySelectorAll("[data-pf-card]").forEach(card => {
+    const k = card.dataset.pfCard, pf = x.rend.carteras[k], box = card.querySelector("[data-chart]"); if(!box) return;
+    const obtener = p => { const [i0, i1] = ventana(S, p, x.hasta); if(i1 <= i0) return null; const v = curvaCartera(S, pf.pesos, i0, i1); if(!v) return null;
+      return { fechas: S.fechas.slice(i0, i1 + 1), lineas: [{ nombre: "Cartera " + k, v, color: "var(--accent)", ancho: 2.5 }, lineaWorld(S, i0, i1)] }; };
+    const marcar = p => card.querySelectorAll("button.kpi").forEach(b => b.setAttribute("aria-pressed", b.dataset.p === p));
+    const pintar = montarGrafica(box, PERIODO_PF, obtener, p => { PERIODO_PF = p; marcar(p); }, false);
+    card.querySelectorAll("button.kpi").forEach(b => b.addEventListener("click", () => { PERIODO_PF = b.dataset.p; marcar(b.dataset.p); pintar(b.dataset.p); }));
+  });
 }
 function renderWeek(i){
   const list = D.semanal?.informes || [];
@@ -244,6 +345,7 @@ function renderWeek(i){
    ${newsHtml}
    ${(x.agenda||[]).length ? `<div class="sechead"><h2>Próxima semana</h2></div><div class="panel"><ol class="hitos">${x.agenda.map(a => `<li><span class="d">${esc(a.fecha)}</span><span>${esc(a.evento)}</span></li>`).join("")}</ol></div>` : ""}
    ${(r.errores||[]).length ? `<p class="note">Sin datos de precio esta semana: ${esc(r.errores.join("; "))}.</p>` : ""}`;
+  montarCarteras(x);
 }
 
 /* ---------- La IA desde 2022 ---------- */
@@ -355,6 +457,13 @@ function renderCompanias(){
    <div class="sechead"><h2>Compañía a compañía</h2><span class="muted" style="font-size:13px">Primero las controladas por su familia o fundador</span></div>
    <div class="cards">${sorted.map(id => coCard(id, x.empresas[id], vals[id], cfg)).join("")}</div>`;
   $("#coBody").querySelectorAll("[data-pf2]").forEach(b => b.addEventListener("click", () => { D2.cartera = b.dataset.pf2; renderCompanias(); }));
+  // Gráfica de cada compañía frente al MSCI World; por defecto desde ChatGPT
+  const S = D.series;
+  if(S) $("#coBody").querySelectorAll("[data-chart-co]").forEach(box => {
+    const id = box.dataset.chartCo, nombre = vals[id]?.nombre || id;
+    montarGrafica(box, "desdeRef", p => { const [i0, i1] = ventana(S, p); const v = curvaValor(S, id, i0, i1); if(!v || i1 <= i0) return null;
+      return { fechas: S.fechas.slice(i0, i1 + 1), lineas: [{ nombre, v, color: "var(--accent)", ancho: 2.5 }, lineaWorld(S, i0, i1)] }; });
+  });
 }
 // Cronología: si la ficha trae «anos» (qué pasó, qué hicieron, cifras y fuentes por año) se usa; si no, las etapas breves
 function anosHtml(e, etf){
@@ -376,6 +485,7 @@ function coCard(id, e, v, cfg){
    <p class="tit">${esc(e.titular)}</p>
    <div class="figs"><span>Desde ChatGPT en euros <b class="${cls(v?.eur?.desdeRef)}">${pct(v?.eur?.desdeRef)}</b></span><span>Máxima caída <b>${pct(v?.eur?.maxCaida,0)}</b></span><span>En 2026 <b class="${cls(v?.eur?.anio)}">${pct(v?.eur?.anio)}</b></span><span>Último cierre <b>${num(v?.precio, v?.moneda)}</b></span></div>
    <p>${esc(e.resumen)}</p>
+   ${D.series && D.series.series[id] ? `<div class="chartbox" data-chart-co="${esc(id)}"></div>` : ""}
    ${anosHtml(e, etf)}
    <div class="cols">
      <div><h4>${etf ? "El activo desde 2022" : "El negocio"}</h4><p>${esc(e.negocio)}</p></div>
@@ -390,8 +500,9 @@ function coCard(id, e, v, cfg){
 
 /* ---------- Datos ---------- */
 const load = f => fetch(f, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
-Promise.all([load("semanal.json"), load("informe-ia.json"), load("companias.json")]).then(([s, ia, co]) => {
-  D.semanal = s; D.ia = ia; D.companias = co; renderWeekPicker(); renderWeek(0); renderIA(); renderCompanias();
+Promise.all([load("semanal.json"), load("informe-ia.json"), load("companias.json"), load("series.json")]).then(([s, ia, co, se]) => {
+  D.semanal = s; D.ia = ia; D.companias = co; D.series = se && Array.isArray(se.fechas) ? se : null;
+  renderWeekPicker(); renderWeek(0); renderIA(); renderCompanias();
   // Un enlace a una ficha (#co-ID o #ia-ID) abre su pestaña y baja hasta ella
   const h = location.hash.slice(1), m = h.match(/^(co|ia)-/);
   if(m){ show(m[1]==="co" ? "companias" : "ia"); document.getElementById(h)?.scrollIntoView(); }
