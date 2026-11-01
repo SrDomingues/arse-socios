@@ -103,6 +103,18 @@ ol.hitos{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:14px}
 ol.hitos li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px}
 ol.hitos .d{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);padding-top:1px}
 ol.srcs{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted)} ol.srcs li{overflow-wrap:anywhere}
+/* Compañías: propiedad y cronología */
+.own{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin-bottom:18px}
+.own .panel{padding:14px 16px}
+.own .big{font-family:var(--f-mono);font-size:26px;font-variant-numeric:tabular-nums}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin-top:8px}
+.bar i{display:block;height:100%}
+ol.years{margin:0;padding:0;list-style:none;display:grid;gap:0;border-left:2px solid var(--line);margin-left:6px}
+ol.years li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:0 0 10px 14px;position:relative;font-size:14.5px}
+ol.years li::before{content:"";position:absolute;left:-6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+ol.years .y{font-family:var(--f-mono);font-weight:500;color:var(--accent)}
+table.holders{font-size:13.5px}
+table.holders td,table.holders th{padding:7px 10px}
 details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--accent)}
 .note{font-size:12.5px;color:var(--muted);margin:10px 0 0;max-width:90ch}
 @media (max-width:600px){.brand h1{font-size:20px} h2{font-size:23px} nav.tabs{margin-left:0;width:100%}}
@@ -115,6 +127,7 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acce
   <div class="brand"><h1>Informe de carteras</h1><span id="brandSub">Cartera A y cartera B</span></div>
   <nav class="tabs" role="tablist">
     <button role="tab" id="tab-semana" data-view="semana">Informe semanal</button>
+    <button role="tab" id="tab-companias" data-view="companias">Compañías desde 2022</button>
     <button role="tab" id="tab-ia" data-view="ia">La IA desde 2022</button>
   </nav>
 </header>
@@ -126,6 +139,13 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acce
   </div>
   <p class="lede" id="wkLede"></p>
   <div id="wkBody"></div>
+</section>
+
+<section class="view" id="view-companias" hidden>
+  <div class="eyebrow">Del 2022 a hoy, compañía a compañía</div>
+  <h2>Qué les ha pasado y quién manda en ellas</h2>
+  <p class="lede" id="coLede">Cargando el informe…</p>
+  <div id="coBody"></div>
 </section>
 
 <section class="view" id="view-ia" hidden>
@@ -150,12 +170,16 @@ const SIGNAL = {verde:["good","Bien"],ambar:["warn","Vigilar"],rojo:["bad","Aten
 const D = { semanal:null, ia:null, cartera:"todas" };
 
 /* ---------- Pestañas ---------- */
-const views = ["semana","ia"];
+const views = ["semana","companias","ia"];
 function show(v){ if(!views.includes(v)) v="semana"; views.forEach(x => { $("#view-"+x).hidden = x!==v; $("#tab-"+x).setAttribute("aria-selected", x===v); }); try{ localStorage.setItem("informe.tab", v) }catch(e){} }
 document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => { show(b.dataset.view); history.replaceState(null,"","#"+b.dataset.view); }));
 let start = location.hash.slice(1); if(!views.includes(start)){ try{ start = localStorage.getItem("informe.tab") }catch(e){ start = null } }
 show(start || "semana");
-window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+window.addEventListener("hashchange", () => {
+  const h = location.hash.slice(1), m = h.match(/^(co|ia)-/);
+  if(m){ show(m[1]==="co" ? "companias" : "ia"); document.getElementById(h)?.scrollIntoView(); }
+  else if(views.includes(h)) show(h);
+});
 
 // Pesos de cada cartera en %. Los informes antiguos se calcularon a pesos iguales y no los traen.
 const peso = (cfg, k, id) => typeof cfg?.[k]?.pesos === "object" ? cfg[k].pesos[id] : null;
@@ -269,10 +293,82 @@ function card(id, e, v, cfg){
   </article>`;
 }
 
+/* ---------- Compañías desde 2022 ---------- */
+// Control de la propiedad: lo que más importa al socio es que la familia o el fundador tengan la mayoría
+const CONTROL = {
+  "Familia o fundador con mayoría": ["good","var(--good)","Familia o fundador con mayoría"],
+  "Fundación con mayoría de votos": ["info","var(--info)","Fundación con mayoría de votos"],
+  "Familia o fundador con participación relevante": ["warn","var(--warn)","Familia o fundador relevante, sin mayoría"],
+  "Controlada por otra entidad": ["info","var(--info)","Controlada por otra entidad"],
+  "Sin accionista de control": ["neutral","var(--muted)","Sin accionista de control"],
+  "No aplica (ETF)": ["neutral","var(--line)","ETF"]
+};
+const ctrlPill = c => { const [k,,l] = CONTROL[c] || ["neutral","",c||"—"]; return `<span class="pill ${k}">${esc(l)}</span>`; };
+const D2 = { cartera: "todas" };
+// Accionistas familiares o fundadores (sin los que ya están incluidos en otro) y porcentajes en forma breve
+const famHolders = e => (e.accionistas||[]).filter(a => /Fundador|Fundación/.test(a.tipo) && !/ya incluid/i.test(a.nombre));
+const pctTxt = s => String(s||"").replace(/^aproximadamente (el )?/i, "≈ ").replace(/\s*\(.*\)\s*$/, "").replace(/ %/g, " %");
+const votosTxt = a => { const v = pctTxt(a.votos); return !v || v === pctTxt(a.capital) || /una sola clase/i.test(a.votos) ? "—" : v; };
+function renderCompanias(){
+  const x = D.companias, r = D.ia?.rend;
+  if(!x || !r){ $("#coLede").textContent = "No se pudo cargar el informe. Recargue la página."; return; }
+  const cfg = r.carteras || {}, vals = r.valores || {};
+  $("#coLede").textContent = `Para cada posición: cómo ha evolucionado el negocio desde 2022, los cambios en la dirección y en el uso del capital, cómo está hoy y quiénes son sus principales accionistas. Investigado el ${fecha(x.generado)} con fuentes enlazadas y revisado por un verificador independiente; los porcentajes de los accionistas llevan la fecha del dato.`;
+  const ids = Object.keys(x.empresas).filter(id => D2.cartera==="todas" || (cfg[D2.cartera]?.valores||[]).includes(id));
+  // Peso de cada cartera según quién controla las compañías
+  const resumen = ["A","B"].filter(k => cfg[k] && typeof cfg[k].pesos === "object").map(k => {
+    const by = {}; Object.entries(cfg[k].pesos).forEach(([id,w]) => { const c = x.empresas[id]?.control || "Sin datos"; by[c] = (by[c]||0) + w; });
+    const order = Object.keys(CONTROL).filter(c => by[c]);
+    const may = by["Familia o fundador con mayoría"] || 0, fun = by["Fundación con mayoría de votos"] || 0;
+    return `<div class="panel"><div class="eyebrow">Cartera ${k}</div><div class="big">${may.toLocaleString("es-ES")} %</div><div class="muted" style="font-size:13px">en compañías donde la familia o el fundador tienen la mayoría${fun ? `; otro ${fun.toLocaleString("es-ES")} % en una compañía controlada por su fundación` : ""}</div>
+      <div class="bar" aria-hidden="true">${order.map(c => `<i style="width:${by[c]}%;background:${CONTROL[c][1]}" title="${esc(CONTROL[c][2])}: ${by[c]} %"></i>`).join("")}</div>
+      <div class="legend" style="margin-top:6px">${order.map(c => `<span><i class="dot" style="background:${CONTROL[c][1]}"></i>${esc(CONTROL[c][2])} ${by[c]} %</span>`).join("")}</div></div>`;
+  }).join("");
+  const rank = c => Object.keys(CONTROL).indexOf(c);
+  const sorted = ids.slice().sort((a,b) => rank(x.empresas[a].control) - rank(x.empresas[b].control) || (vals[b]?.eur?.desdeRef ?? -9) - (vals[a]?.eur?.desdeRef ?? -9));
+  const table = `<div class="tablewrap"><table><thead><tr><th>Compañía</th><th>Peso</th><th>Quién manda</th><th>Familia o fundador</th><th class="n">Capital</th><th class="n">Votos</th><th class="n">Desde ChatGPT</th></tr></thead><tbody>
+    ${sorted.map(id => { const all = famHolders(x.empresas[id]), grupo = all.find(a => /^(Familia|Grupo familiar)/i.test(a.nombre));
+      // Si hay un total del grupo familiar, la tabla resumen solo muestra ese total (sus sociedades ya están dentro)
+      const e = x.empresas[id], fs = grupo ? [grupo] : all, v = vals[id], br = a => a.join("<br>");
+      return `<tr><td><a href="#co-${esc(id)}"><b>${esc(v?.nombre||id)}</b></a></td><td style="white-space:nowrap">${esc(cartera(cfg,id))}</td><td>${ctrlPill(e.control)}</td>
+      <td style="min-width:220px">${fs.length ? br(fs.map(a => esc(a.nombre))) : `<span class="muted">${e.control==="No aplica (ETF)" ? "—" : "Ninguno relevante"}</span>`}</td>
+      <td class="n">${fs.length ? br(fs.map(a => esc(pctTxt(a.capital)))) : "—"}</td><td class="n">${fs.length ? br(fs.map(a => esc(votosTxt(a)))) : "—"}</td><td class="n ${cls(v?.eur?.desdeRef)}">${pct(v?.eur?.desdeRef,0)}</td></tr>`; }).join("")}</tbody></table></div>`;
+  $("#coBody").innerHTML = `
+   <div class="row" style="margin-bottom:14px"><div class="seg" role="group" aria-label="Filtrar por cartera">${["todas","A","B"].map(k => `<button type="button" data-pf2="${k}" aria-pressed="${D2.cartera===k}">${k==="todas"?"Todas":"Cartera "+k}</button>`).join("")}</div></div>
+   <div class="own">${resumen}</div>
+   <div class="sechead" style="margin-top:6px"><h2>Quién manda en cada compañía</h2><span class="muted" style="font-size:13px">Mayoría = más del 50 % del capital o de los votos</span></div>
+   ${table}
+   <div class="sechead"><h2>Compañía a compañía</h2><span class="muted" style="font-size:13px">Primero las controladas por su familia o fundador</span></div>
+   <div class="cards">${sorted.map(id => coCard(id, x.empresas[id], vals[id], cfg)).join("")}</div>`;
+  $("#coBody").querySelectorAll("[data-pf2]").forEach(b => b.addEventListener("click", () => { D2.cartera = b.dataset.pf2; renderCompanias(); }));
+}
+function coCard(id, e, v, cfg){
+  const holders = (e.accionistas||[]).length ? `<div class="tablewrap"><table class="holders"><thead><tr><th>Accionista</th><th>Tipo</th><th class="n">Capital</th><th class="n">Votos</th><th>Dato a</th></tr></thead><tbody>
+    ${e.accionistas.map(a => `<tr><td>${a.fuente ? `<a href="${safeUrl(a.fuente)}" target="_blank" rel="noopener">${esc(a.nombre)}</a>` : esc(a.nombre)}</td><td>${esc(a.tipo)}</td><td class="n">${esc(pctTxt(a.capital)||"—")}</td><td class="n">${esc(votosTxt(a))}</td><td class="mono muted" style="font-size:12px">${esc(a.fecha||"")}</td></tr>`).join("")}</tbody></table></div>` : "";
+  return `<article class="panel card" id="co-${esc(id)}">
+   <div class="head"><div style="min-width:0"><div class="eyebrow">${esc(cartera(cfg,id) ? "Cartera "+cartera(cfg,id) : "")}</div><h3>${esc(v?.nombre || id)}</h3></div>${ctrlPill(e.control)}</div>
+   <p class="tit">${esc(e.titular)}</p>
+   <div class="figs"><span>Desde ChatGPT en euros <b class="${cls(v?.eur?.desdeRef)}">${pct(v?.eur?.desdeRef)}</b></span><span>Máxima caída <b>${pct(v?.eur?.maxCaida,0)}</b></span><span>En 2026 <b class="${cls(v?.eur?.anio)}">${pct(v?.eur?.anio)}</b></span><span>Último cierre <b>${num(v?.precio, v?.moneda)}</b></span></div>
+   <p>${esc(e.resumen)}</p>
+   ${(e.etapas||[]).length ? `<div><h4>Año a año</h4><ol class="years">${e.etapas.map(s => `<li><span class="y">${esc(s.periodo)}</span><span>${esc(s.hechos)}</span></li>`).join("")}</ol></div>` : ""}
+   <div class="cols">
+     <div><h4>El negocio</h4><p>${esc(e.negocio)}</p></div>
+     <div><h4>Dirección</h4><p>${esc(e.direccion)}</p></div>
+     <div><h4>Uso del capital</h4><p>${esc(e.capital)}</p></div>
+     <div><h4>Cómo está hoy</h4><p>${esc(e.situacion)}</p></div>
+   </div>
+   <div><h4>Quién manda</h4><p style="margin-bottom:10px">${esc(e.controlExplicacion)}</p>${holders}</div>
+   ${(e.fuentes||[]).length ? `<details><summary>Fuentes (${e.fuentes.length})</summary><ol class="srcs">${e.fuentes.map(f => `<li><a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${esc(f.titulo||f.url)}</a></li>`).join("")}</ol></details>` : ""}
+  </article>`;
+}
+
 /* ---------- Datos ---------- */
 const load = f => fetch(f, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
-Promise.all([load("semanal.json"), load("informe-ia.json")]).then(([s, ia]) => {
-  D.semanal = s; D.ia = ia; renderWeekPicker(); renderWeek(0); renderIA();
+Promise.all([load("semanal.json"), load("informe-ia.json"), load("companias.json")]).then(([s, ia, co]) => {
+  D.semanal = s; D.ia = ia; D.companias = co; renderWeekPicker(); renderWeek(0); renderIA(); renderCompanias();
+  // Un enlace a una ficha (#co-ID o #ia-ID) abre su pestaña y baja hasta ella
+  const h = location.hash.slice(1), m = h.match(/^(co|ia)-/);
+  if(m){ show(m[1]==="co" ? "companias" : "ia"); document.getElementById(h)?.scrollIntoView(); }
 });
 })();
 </script>
