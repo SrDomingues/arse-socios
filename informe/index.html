@@ -90,7 +90,7 @@ ul.plain{margin:0;padding-left:18px} ul.plain li{margin-bottom:6px}
 svg text{font-family:var(--f-body)}
 .legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12.5px;color:var(--muted);margin-top:8px}
 .cards{display:grid;gap:18px}
-.card{display:grid;gap:12px}
+.card{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .card .head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;justify-content:space-between}
 .card .tit{font-family:var(--f-display);font-size:17px;margin:0;max-width:75ch}
 .figs{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted)}
@@ -113,6 +113,20 @@ ol.years{margin:0;padding:0;list-style:none;display:grid;gap:0;border-left:2px s
 ol.years li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:0 0 10px 14px;position:relative;font-size:14.5px}
 ol.years li::before{content:"";position:absolute;left:-6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
 ol.years .y{font-family:var(--f-mono);font-weight:500;color:var(--accent)}
+/* Año a año: un bloque por año con lo que pasó, lo que hicieron, las cifras y sus fuentes */
+.yrs{display:grid;gap:0;border-top:1px solid var(--line)}
+.yr{display:grid;grid-template-columns:64px minmax(0,1fr);gap:4px 16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.yr .y{font-family:var(--f-mono);font-size:18px;font-weight:500;color:var(--accent);line-height:1.2}
+.yr .body{display:grid;gap:8px;min-width:0}
+.yr .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:8px 22px}
+.yr .two>div{min-width:0}
+.yr h5{margin:0 0 2px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.yr p{margin:0;font-size:14.5px;overflow-wrap:anywhere}
+.yr .cif,.yr .fts{overflow-wrap:anywhere}
+.yr .cif{font-family:var(--f-mono);font-size:12.5px;color:var(--ink);background:var(--accent-soft);border-radius:4px;padding:4px 8px;justify-self:start;font-variant-numeric:tabular-nums}
+.yr .fts{font-size:12px;color:var(--muted)}
+.yr .fts a{margin-right:8px}
+@media (max-width:520px){.yr{grid-template-columns:1fr}}
 table.holders{font-size:13.5px}
 table.holders td,table.holders th{padding:7px 10px}
 details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--accent)}
@@ -342,7 +356,19 @@ function renderCompanias(){
    <div class="cards">${sorted.map(id => coCard(id, x.empresas[id], vals[id], cfg)).join("")}</div>`;
   $("#coBody").querySelectorAll("[data-pf2]").forEach(b => b.addEventListener("click", () => { D2.cartera = b.dataset.pf2; renderCompanias(); }));
 }
+// Cronología: si la ficha trae «anos» (qué pasó, qué hicieron, cifras y fuentes por año) se usa; si no, las etapas breves
+function anosHtml(e, etf){
+  if((e.anos||[]).length) return `<div><h4>Año a año</h4><div class="yrs">${e.anos.map(a => `<div class="yr"><span class="y">${esc(a.ano)}</span><div class="body">
+     <div class="two"><div><h5>Qué pasó</h5><p>${esc(a.quePaso)}</p></div><div><h5>${etf ? "Qué hicieron gobiernos y bancos centrales" : "Qué hizo la compañía"}</h5><p>${esc(a.queHicieron)}</p></div></div>
+     ${a.cifras ? `<span class="cif">${esc(a.cifras)}</span>` : ""}
+     ${(a.fuentes||[]).length ? `<div class="fts">Fuentes: ${a.fuentes.map((f,i) => `<a href="${safeUrl(f.url)}" target="_blank" rel="noopener" title="${esc(f.titulo||f.url)}">${esc(fuenteCorta(f))}</a>`).join("")}</div>` : ""}
+    </div></div>`).join("")}</div></div>`;
+  return (e.etapas||[]).length ? `<div><h4>Año a año</h4><ol class="years">${e.etapas.map(s => `<li><span class="y">${esc(s.periodo)}</span><span>${esc(s.hechos)}</span></li>`).join("")}</ol></div>` : "";
+}
+// Nombre breve de la fuente: el medio o el dominio (reuters.com, sec.gov…)
+const fuenteCorta = f => { try{ return new URL(f.url).hostname.replace(/^www\./, ""); }catch(err){ return f.titulo || "fuente"; } };
 function coCard(id, e, v, cfg){
+  const etf = e.control === "No aplica (ETF)";
   const holders = (e.accionistas||[]).length ? `<div class="tablewrap"><table class="holders"><thead><tr><th>Accionista</th><th>Tipo</th><th class="n">Capital</th><th class="n">Votos</th><th>Dato a</th></tr></thead><tbody>
     ${e.accionistas.map(a => `<tr><td>${a.fuente ? `<a href="${safeUrl(a.fuente)}" target="_blank" rel="noopener">${esc(a.nombre)}</a>` : esc(a.nombre)}</td><td>${esc(a.tipo)}</td><td class="n">${esc(pctTxt(a.capital)||"—")}</td><td class="n">${esc(votosTxt(a))}</td><td class="mono muted" style="font-size:12px">${esc(a.fecha||"")}</td></tr>`).join("")}</tbody></table></div>` : "";
   return `<article class="panel card" id="co-${esc(id)}">
@@ -350,14 +376,14 @@ function coCard(id, e, v, cfg){
    <p class="tit">${esc(e.titular)}</p>
    <div class="figs"><span>Desde ChatGPT en euros <b class="${cls(v?.eur?.desdeRef)}">${pct(v?.eur?.desdeRef)}</b></span><span>Máxima caída <b>${pct(v?.eur?.maxCaida,0)}</b></span><span>En 2026 <b class="${cls(v?.eur?.anio)}">${pct(v?.eur?.anio)}</b></span><span>Último cierre <b>${num(v?.precio, v?.moneda)}</b></span></div>
    <p>${esc(e.resumen)}</p>
-   ${(e.etapas||[]).length ? `<div><h4>Año a año</h4><ol class="years">${e.etapas.map(s => `<li><span class="y">${esc(s.periodo)}</span><span>${esc(s.hechos)}</span></li>`).join("")}</ol></div>` : ""}
+   ${anosHtml(e, etf)}
    <div class="cols">
-     <div><h4>El negocio</h4><p>${esc(e.negocio)}</p></div>
-     <div><h4>Dirección</h4><p>${esc(e.direccion)}</p></div>
-     <div><h4>Uso del capital</h4><p>${esc(e.capital)}</p></div>
+     <div><h4>${etf ? "El activo desde 2022" : "El negocio"}</h4><p>${esc(e.negocio)}</p></div>
+     <div><h4>${etf ? "Gestora" : "Dirección"}</h4><p>${esc(e.direccion)}</p></div>
+     <div><h4>${etf ? "Estructura del fondo" : "Uso del capital"}</h4><p>${esc(e.capital)}</p></div>
      <div><h4>Cómo está hoy</h4><p>${esc(e.situacion)}</p></div>
    </div>
-   <div><h4>Quién manda</h4><p style="margin-bottom:10px">${esc(e.controlExplicacion)}</p>${holders}</div>
+   <div><h4>${etf ? "Quién gestiona el fondo" : "Quién manda"}</h4><p style="margin-bottom:10px">${esc(e.controlExplicacion)}</p>${holders}</div>
    ${(e.fuentes||[]).length ? `<details><summary>Fuentes (${e.fuentes.length})</summary><ol class="srcs">${e.fuentes.map(f => `<li><a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${esc(f.titulo||f.url)}</a></li>`).join("")}</ol></details>` : ""}
   </article>`;
 }
