@@ -197,7 +197,7 @@ dl.ro dt{min-width:0;padding-right:10px}
   </nav>
 </header>
 
-<p class="notice" id="globalNotice"><b>Precios: con la bolsa abierta, el de hoy con su hora (se refresca cada hora); con la bolsa cerrada, el último cierre.</b> Cada precio lleva su fecha y su fuente, y se actualiza buscándolo en la web tres veces cada día laborable (9:07, 18:07 y 23:07, hora de Madrid). Si a un precio le faltan cierres de días laborables, aparece marcado (el fin de semana no cuenta). Todas las cifras y los análisis salen de fuentes públicas enlazadas, no de la memoria.</p>
+<p class="notice" id="globalNotice"><b>Precios: con la bolsa abierta, el de hoy con su hora; con la bolsa cerrada, el último cierre.</b> Cada precio lleva su fecha y su fuente, y se actualiza cada 3 horas los días laborables, de la apertura de Asia al cierre de EE. UU. Si a un precio le faltan cierres de días laborables, aparece marcado (el fin de semana no cuenta). Todas las cifras y los análisis salen de fuentes públicas enlazadas, no de la memoria.<br><span id="liveStatus">Cargando el precio en directo…</span></p>
 
 <!-- OPORTUNIDADES -->
 <section class="view" id="view-oportunidades" hidden>
@@ -373,11 +373,13 @@ const today = () => new Date().toISOString().slice(0,10);
 // El fin de semana no cuenta: el lunes antes del cierre, el precio del viernes es el último que hay.
 const missedSessions = d => { const t = Date.parse(d); if(!isFinite(t)) return 0; let n = 0; for(let x = t + 864e5; x + 23*36e5 <= Date.now(); x += 864e5){ const w = new Date(x).getUTCDay(); if(w>0 && w<6) n++; } return n; };
 // Fecha corta para las tablas: «hoy 16:00» si la sesión sigue abierta, si no la fecha del cierre
-const pxWhen = c => c.priceIntraday && c.priceTime ? "hoy " + new Date(c.priceTime).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Madrid"}) : (c.priceDate||"");
+const pxWhen = c => c.priceLive ? (w => w.closed ? c.priceDate : `${c.priceDate} ${hmMadrid(w.at)}`)(liveWhen(c)) : c.priceIntraday && c.priceTime ? "hoy " + new Date(c.priceTime).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Madrid"}) : (c.priceDate||"");
 const closeLabel = d => new Date(d+"T12:00:00Z").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"short",timeZone:"UTC"});
 // Línea de fecha del precio: sin aviso si es el último cierre; aviso si faltan cierres (2 o más, para no marcar festivos)
 function priceDateLine(raw, lbl, tol){
   if(!raw.priceDate) return "Sin precio todavía";
+  if(raw.priceLive){ const w = liveWhen(raw), src = raw.priceSource ? ` · <a href="${esc(raw.priceSource)}" target="_blank" rel="noopener">fuente</a>` : "";
+    return w.closed ? `Cierre del ${esc(closeLabel(raw.priceDate))}${src}` : `<b>${esc(closeLabel(raw.priceDate))}, a las ${esc(hmMadrid(w.at))}</b> (hora de Madrid)${src}`; }
   // Sesión abierta: precio de hoy con su hora (hora de Madrid); al cerrar la bolsa lo sustituye el cierre
   if(raw.priceIntraday && raw.priceTime) return `<b>Hoy a las ${esc(new Date(raw.priceTime).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Madrid"}))}</b> · sesión abierta${raw.priceSource ? ` · <a href="${esc(raw.priceSource)}" target="_blank" rel="noopener">fuente</a>` : ""}`;
   const miss = missedSessions(raw.priceDate), src = raw.priceSource ? ` · <a href="${esc(raw.priceSource)}" target="_blank" rel="noopener">fuente</a>` : "";
@@ -394,8 +396,68 @@ function applyPx(){
     const c = S.companies[t]; if(!c || !(p.priceDate > (c.priceDate||""))) continue;
     if(p.currency && c.currency && p.currency!==c.currency) continue;
     if(c.price>0 && Math.abs(p.price/c.price-1)>=0.25) continue;
-    Object.assign(c, {price:p.price, priceDate:p.priceDate, priceSource:p.priceSource, priceIntraday:!!p.priceIntraday, priceTime:p.priceTime||null});
+    Object.assign(c, {price:p.price, priceDate:p.priceDate, priceSource:p.priceSource, priceIntraday:!!p.priceIntraday, priceTime:p.priceTime||null, priceLive:false});
   }
+  // Encima, el precio en directo de TradingView (se pide al abrir la página y cada 3 horas)
+  for(const [t,p] of Object.entries(LIVE)){
+    const c = S.companies[t]; if(!c || p.priceDate < (c.priceDate||"")) continue;
+    if(c.price>0 && Math.abs(p.price/c.price-1)>=0.25) continue;
+    Object.assign(c, p);
+  }
+}
+/* ---------- Precio en directo ---------- */
+// Símbolo de TradingView de cada cotizada, validado con mapear-tv.js (misma moneda y precio a menos del 3 %).
+const TV = {"1211":"HKEX:1211","1808":"TSE:1808","1879":"TSE:1879","1913":"HKEX:1913","1928":"HKEX:1928","2325":"TSE:2325","2327":"TSE:2327","2330":"TWSE:2330","2371":"TSE:2371","2454":"TWSE:2454","2498":"TSE:2498","3064":"TSE:3064","3626":"TSE:3626","3679":"TSE:3679","3690":"HKEX:3690","3918":"HKEX:3918","4063":"TSE:4063","4543":"TSE:4543","4684":"TSE:4684","6098":"TSE:6098","6146":"TSE:6146","6273":"TSE:6273","6301":"TSE:6301","6367":"TSE:6367","6758":"TSE:6758","6861":"TSE:6861","6920":"TSE:6920","6954":"TSE:6954","7309":"TSE:7309","7741":"TSE:7741","7974":"TSE:7974","8035":"TSE:8035","8113":"TSE:8113","9682":"TSE:9682","9697":"TSE:9697","9843":"TSE:9843","9983":"TSE:9983","9988":"HKEX:9988","300750":"SZSE:300750","600519":"SSE:600519","000333":"SZSE:000333","0027":"HKEX:27","005930":"KRX:005930","0388":"HKEX:388","0669":"HKEX:669","0700":"HKEX:700","11B":"GPW:11B","A":"NYSE:A","AAPL":"NASDAQ:AAPL","ABNB":"NASDAQ:ABNB","ABT":"NYSE:ABT","AD":"EURONEXT:AD","ADBE":"NASDAQ:ADBE","ADC":"NYSE:ADC","ADP":"NASDAQ:ADP","ADYEN":"EURONEXT:ADYEN","AI":"EURONEXT:AI","ALX":"NYSE:ALX","AMRZ":"NYSE:AMRZ","AMZN":"NASDAQ:AMZN","ASIANPAINT":"NSE:ASIANPAINT","ASML":"EURONEXT:ASML","ASSA-B":"OMXSTO:ASSA_B","ATCO-A":"OMXSTO:ATCO_A","ATD":"TSX:ATD","AUTO":"LSE:AUTO","AWR":"NYSE:AWR","AZN":"LSE:AZN","AZO":"NYSE:AZO","BATS":"LSE:BATS","BC":"MIL:BC","BF-B":"NYSE:BF.B","BKNG":"NASDAQ:BKNG","BLO":"GPW:BLO","BN":"NYSE:BN","BR":"NYSE:BR","BRK-B":"NYSE:BRK.B","BSX":"NYSE:BSX","CAT":"NYSE:CAT","CB":"NYSE:CB","CDR":"GPW:CDR","CELH":"NASDAQ:CELH","CFR":"SIX:CFR","CGEO":"LSE:CGEO","CMG":"NYSE:CMG","CNQ":"TSX:CNQ","CNR":"TSX:CNR","COLO-B":"OMXCOP:COLO_B","COST":"NASDAQ:COST","CPR":"MIL:CPR","CPRT":"NASDAQ:CPRT","CPT":"NYSE:CPT","CSL":"NYSE:CSL","CSU":"TSX:CSU","CSV":"NYSE:CSV","CTAS":"NASDAQ:CTAS","CWT":"NYSE:CWT","DBX7":"XETR:DBX7","DE":"NYSE:DE","DGE":"LSE:DGE","DHR":"NYSE:DHR","DIVISLAB":"NSE:DIVISLAB","DNP":"GPW:DNP","DOL":"TSX:DOL","DPLM":"LSE:DPLM","DSV":"OMXCOP:DSV","DSY":"EURONEXT:DSY","EE":"NYSE:EE","EPI-A":"OMXSTO:EPI_A","ERF":"EURONEXT:ERF","EVO":"OMXSTO:EVO","EXPE":"NASDAQ:EXPE","EXPN":"LSE:EXPN","FCX":"NYSE:FCX","FDR":"BME:FDR","FFH":"TSX:FFH","FICO":"NYSE:FICO","FLXC":"XETR:FLXC","FRPH":"NASDAQ:FRPH","GAW":"LSE:GAW","GFL":"NYSE:GFL","GIVN":"SIX:GIVN","GLNG":"NASDAQ:GLNG","GOOGL":"NASDAQ:GOOGL","GSK":"LSE:GSK","HANZA":"OMXSTO:HANZA","HAYW":"NYSE:HAYW","HD":"NYSE:HD","HEI":"NYSE:HEI","HINDUNILVR":"NSE:HINDUNILVR","HLMA":"LSE:HLMA","IB1T":"XETR:IB1T","ICE":"NYSE:ICE","IGLN":"XETR:PPFB","IMB":"LSE:IMB","INDT":"OMXSTO:INDT","INFY":"NSE:INFY","INTU":"NASDAQ:INTU","ISRG":"NASDAQ:ISRG","ITX":"BME:ITX","JMT":"EURONEXT:JMT","JOE":"NYSE:JOE","KDP":"NASDAQ:KDP","KER":"EURONEXT:KER","KIT":"OSL:KIT","KKR":"NYSE:KKR","KNEBV":"OMXHEX:KNEBV","KO":"NYSE:KO","LIFCO-B":"OMXSTO:LIFCO_B","LISN":"SIX:LISN","LLY":"NYSE:LLY","LMN":"TSXV:LMN","LSEG":"LSE:LSEG","MA":"NYSE:MA","MC":"EURONEXT:MC","MCO":"NYSE:MCO","MDT":"NYSE:MDT","META":"NASDAQ:META","MICC":"EURONEXT:MICC","MKL":"NYSE:MKL","MNST":"NASDAQ:MNST","MO":"NYSE:MO","MONC":"MIL:MONC","MSCI":"NYSE:MSCI","MSFT":"NASDAQ:MSFT","MTD":"NYSE:MTD","NESN":"SIX:NESN","NESTLEIND":"NSE:NESTLEIND","NKE":"NYSE:NKE","NNN":"NYSE:NNN","NOTE":"OMXSTO:NOTE","NOVN":"SIX:NOVN","NOVO-B":"OMXCOP:NOVO_B","NVDA":"NASDAQ:NVDA","O":"NYSE:O","ODFL":"NASDAQ:ODFL","OI":"NYSE:OI","OR":"EURONEXT:OR","ORLY":"NASDAQ:ORLY","PAGEIND":"NSE:PAGEIND","PCYO":"NASDAQ:PCYO","PEP":"NASDAQ:PEP","PG":"NYSE:PG","PGHN":"SIX:PGHN","PIDILITIND":"NSE:PIDILITIND","PM":"NYSE:PM","POOL":"NASDAQ:POOL","RAA":"XETR:RAA","RACE":"MIL:RACE","RCO":"EURONEXT:RCO","REG":"TSXV:REG","REL":"LSE:REL","REXR":"NYSE:REXR","RI":"EURONEXT:RI","RMS":"EURONEXT:RMS","RMV":"LSE:RMV","ROL":"NYSE:ROL","ROP":"NASDAQ:ROP","SAF":"EURONEXT:SAF","SAN":"EURONEXT:SAN","SAP":"XETR:SAP","SBMO":"EURONEXT:SBMO","SCCO":"NYSE:SCCO","SCI":"NYSE:SCI","SFC":"TSX:SFC","SIKA":"SIX:SIKA","SKYH":"NYSE:SKYH","SPGI":"NYSE:SPGI","SPX":"LSE:SPX","SU":"EURONEXT:SU","TBBB":"NYSE:TBBB","TCS":"NSE:TCS","TITAN":"NSE:TITAN","TJX":"NYSE:TJX","TMO":"NYSE:TMO","TOI":"TSXV:TOI","TPL":"NYSE:TPL","TSLA":"NASDAQ:TSLA","TTWO":"NASDAQ:TTWO","TXN":"NASDAQ:TXN","TYL":"NYSE:TYL","UBER":"NYSE:UBER","UBI":"EURONEXT:UBI","UHR":"SIX:UHR","ULVR":"LSE:ULVR","UMG":"EURONEXT:UMG","V":"NYSE:V","VID":"BME:VID","VRLA":"EURONEXT:VRLA","VRSK":"NASDAQ:VRSK","WALMEX":"BMV:WALMEX","WAT":"NYSE:WAT","WCN":"NYSE:WCN","WKL":"EURONEXT:WKL","WOSG":"LSE:WOSG","ZTS":"NYSE:ZTS","ROG":"SIX:ROP"};
+const TV_CUR = {GBX:"GBp"};
+// Hora de cierre de cada bolsa (hora local) para saber si el precio de hoy ya es el cierre
+const TV_CLOSE = {HKEX:["Asia/Hong_Kong",16,0], TSE:["Asia/Tokyo",15,30], TWSE:["Asia/Taipei",13,30], SZSE:["Asia/Shanghai",15,0], SSE:["Asia/Shanghai",15,0],
+  KRX:["Asia/Seoul",15,30], NSE:["Asia/Kolkata",15,30], GPW:["Europe/Warsaw",17,0], EURONEXT:["Europe/Paris",17,30], OMXSTO:["Europe/Stockholm",17,30],
+  TSX:["America/Toronto",16,0], TSXV:["America/Toronto",16,0], LSE:["Europe/London",16,30], MIL:["Europe/Rome",17,30], SIX:["Europe/Zurich",17,30],
+  OMXCOP:["Europe/Copenhagen",17,0], XETR:["Europe/Berlin",17,30], BME:["Europe/Madrid",17,30], OSL:["Europe/Oslo",16,20], OMXHEX:["Europe/Helsinki",18,30],
+  BMV:["America/Mexico_City",15,0], NASDAQ:["America/New_York",16,0], NYSE:["America/New_York",16,0], AMEX:["America/New_York",16,0], CBOE:["America/New_York",16,0]};
+// Días de cierre anticipado (hora local), que mandan sobre TV_CLOSE
+const US_HALF = {NYSE:[13,0], NASDAQ:[13,0], AMEX:[13,0], CBOE:[13,0]};
+const TV_EARLY = {"2026-11-27":US_HALF, "2026-12-24":Object.assign({LSE:[12,30]}, US_HALF), "2026-12-31":{LSE:[12,30]}, "2027-11-26":US_HALF, "2027-12-24":{LSE:[12,30]}, "2027-12-31":{LSE:[12,30]}};
+// Instante (UTC) de la hora local h:m del día d (AAAA-MM-DD) en la zona tz
+function zonedTime(d, h, m, tz){
+  const guess = Date.parse(`${d}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00Z`);
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).formatToParts(guess).map(x => [x.type, x.value]));
+  return guess - (Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:00Z`) - guess);
+}
+// Hora real del precio: la de la consulta menos el retraso de la bolsa, sin pasar de su cierre
+function liveWhen(c){
+  const z = TV_CLOSE[c.priceEx], e = (TV_EARLY[c.priceDate]||{})[c.priceEx];
+  const close = z ? zonedTime(c.priceDate, e ? e[0] : z[1], e ? e[1] : z[2], z[0]) : NaN, at = c.priceLiveAt - (c.priceDelay||0)*6e4;
+  return isFinite(close) && at >= close ? {closed:true, at:close} : {closed:false, at};
+}
+const hmMadrid = ms => new Date(ms).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Madrid"});
+let LIVE = {}, liveAt = null, liveErr = false, liveBusy = false;
+async function refreshLive(){
+  const ids = Object.keys(TV).filter(t => S.companies[t]); if(!ids.length || liveBusy) return;
+  liveBusy = true;
+  try{
+    const r = await fetch("https://scanner.tradingview.com/global/scan", {method:"POST", signal: AbortSignal.timeout(20000), body: JSON.stringify({symbols:{tickers: ids.map(t => TV[t])}, columns:["close","currency","update_mode","time"]})});
+    const j = await r.json(), bySym = Object.fromEntries((j.data||[]).map(x => [x.s, x.d])), now = Date.now(), next = {};
+    for(const t of ids){
+      const d = bySym[TV[t]], c = S.companies[t]; if(!d || !(d[0] > 0) || !(d[3] > 0)) continue;
+      const cur = TV_CUR[d[1]] || d[1]; if(c.currency && cur !== c.currency) continue;
+      next[t] = {price:d[0], priceDate:new Date(d[3]*1000).toISOString().slice(0,10), priceLive:true, priceDelay:/delayed/.test(d[2]||"") ? 15 : 0, priceLiveAt:now, priceEx:TV[t].split(":")[0],
+        priceIntraday:false, priceTime:null, priceSource:`https://www.tradingview.com/symbols/${TV[t].replace(":","-")}/`};
+    }
+    // Respuesta vacía: se avisa y se conservan los precios anteriores con su hora
+    if(!Object.keys(next).length) throw new Error("respuesta sin precios");
+    LIVE = next; liveAt = now; liveErr = false;
+    applyPx(); renderAll(); if(U.loaded) renderUni();
+  }catch(e){ liveErr = true; console.warn("precio en directo", e); }
+  finally{ liveBusy = false; }
+  renderLiveStatus();
+}
+function renderLiveStatus(){
+  const el = $("#liveStatus"); if(!el) return;
+  const hm = ms => new Date(ms).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit",timeZone:"Europe/Madrid"});
+  el.className = liveErr ? "stale" : "";
+  el.textContent = liveErr ? `No se pudo conectar con el precio en directo${liveAt ? `; último dato a las ${hm(liveAt)}` : ""}. Se muestran los últimos precios guardados.`
+    : liveAt ? `Precios consultados a las ${hm(liveAt)} (hora de Madrid); se renuevan al abrir la página y cada 3 horas. Cada ficha indica la fecha y la hora de su precio.` : "Cargando el precio en directo…";
 }
 
 /* ---------- Tabs ---------- */
@@ -1057,15 +1119,19 @@ Promise.resolve().then(() => JSON.parse(document.getElementById("data-snapshot")
   if(S.db) return;
   S.companies = j.companies || {}; S.analyses = j.analyses || {}; snapAsOf = j.asOf; applyPx();
   const sd = $("#snapDate"); if(sd && snapAsOf) sd.textContent = snapWhen(snapAsOf);
-  renderAll(); if(U.loaded) renderUni();
+  renderAll(); if(U.loaded) renderUni(); refreshLive();
 }).catch(e => console.warn("snapshot", e));
+// Precio en directo: al abrir la página y después cada 3 horas mientras está a la vista (y al volver a ella si ya pasaron)
+const LIVE_EVERY = 3*36e5;
+setInterval(() => { if(!document.hidden) refreshLive(); }, LIVE_EVERY);
+document.addEventListener("visibilitychange", () => { if(!document.hidden && (!liveAt || Date.now() - liveAt > LIVE_EVERY)) refreshLive(); });
 fetch("precios.json").then(r => r.ok ? r.json() : null).then(j => { if(!j) return; PX = j.prices || {}; applyPx(); renderAll(); if(U.loaded) renderUni(); }).catch(() => {});
 (async () => {
   const use = n => (window.claude && claude.use) ? claude.use(n).catch(() => null) : Promise.resolve(null);
   const [db, user] = await Promise.all([use("db"), use("user")]);
   if(user){ try{ S.me = await user.id() }catch(e){} }
   if(!db){
-    $("#globalNotice").innerHTML = `<b>Precios: con la bolsa abierta, el de hoy con su hora; con la bolsa cerrada, el último cierre.</b> Datos actualizados<span id="snapDate">${snapAsOf ? esc(snapWhen(snapAsOf)) : ""}</span>; se refrescan tres veces cada día laborable. Cada precio lleva su fecha y su fuente. Todas las cifras salen de fuentes públicas enlazadas.`;
+    $("#globalNotice").innerHTML = `<b>Precios: con la bolsa abierta, el de hoy con su hora; con la bolsa cerrada, el último cierre.</b> Datos actualizados<span id="snapDate">${snapAsOf ? esc(snapWhen(snapAsOf)) : ""}</span>; se refrescan tres veces cada día laborable. Cada precio lleva su fecha y su fuente. Todas las cifras salen de fuentes públicas enlazadas.<br><span id="liveStatus"></span>`; renderLiveStatus();
     $("#tab-vigilancia").hidden = true;
     if(!$("#view-vigilancia").hidden) show("oportunidades");
     return;
@@ -1075,7 +1141,7 @@ fetch("precios.json").then(r => r.ok ? r.json() : null).then(j => { if(!j) retur
     const o = {}; snap.docs.forEach(d => o[d.id] = Object.assign({}, d.data()));
     S[target] = o; after();
   }, err => console.warn(col, err));
-  sub("companies","companies", () => { applyPx(); renderAll(); });
+  sub("companies","companies", () => { applyPx(); renderAll(); if(!liveAt) refreshLive(); });
   sub("analyses","analyses", renderAll);
   sub("requests","requestDocs", () => { Object.values(S.requestDocs).forEach(d => S.requested.add(d.isin||d.ticker)); if(U.loaded) renderUni(); });
   sub("portfolios","portfolios", renderPortfolios);
