@@ -17,7 +17,7 @@ if ($n -lt 100 -or $na -lt 100) { throw "snapshot incompleto: $n empresas, $na a
 $reps = @(
   @('const r = await fetch("universe.json"); const j = await r.json();', 'const j = JSON.parse(document.getElementById("data-universe").textContent);'),
   @('fetch("snapshot.json").then(r => r.json()).then(j => {', 'Promise.resolve().then(() => JSON.parse(document.getElementById("data-snapshot").textContent)).then(j => {'),
-  @('; se refrescan tres veces cada día laborable (hacia las 9:40, 18:40 y 23:40, hora de Madrid)', '; se refrescan tres veces cada día laborable'),
+  @('; se refrescan tres veces cada día laborable (hacia las 9:40, 18:40 y 23:40, hora de Madrid)', '; se refrescan cada 3 horas los días laborables, de la apertura de Asia al cierre de EE. UU.'),
   @('<title>Círculo de Competencia</title>', '<title>Círculo de Competencia · ARSE Socios</title>')
 )
 foreach ($r in $reps) { if (-not $h.Contains($r[0])) { throw "No encontrado en la página: $($r[0])" }; $h = $h.Replace($r[0], $r[1]) }

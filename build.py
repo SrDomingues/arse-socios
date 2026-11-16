@@ -23,7 +23,7 @@ REPS = [
     ('fetch("snapshot.json").then(r => r.json()).then(j => {',
      'Promise.resolve().then(() => JSON.parse(document.getElementById("data-snapshot").textContent)).then(j => {'),
     ('; se refrescan tres veces cada día laborable (hacia las 9:40, 18:40 y 23:40, hora de Madrid)',
-     '; se refrescan tres veces cada día laborable'),
+     '; se refrescan cada 3 horas los días laborables, de la apertura de Asia al cierre de EE. UU.'),
     ('<title>Círculo de Competencia</title>', '<title>Círculo de Competencia · ARSE Socios</title>'),
 ]
 for old, new in REPS:
